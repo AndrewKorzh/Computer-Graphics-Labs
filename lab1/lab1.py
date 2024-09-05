@@ -65,21 +65,19 @@ class GraphDraw:
         if func:
             self.canvas.delete("all")
             y_range = self.get_y_range_with_offset(func, self.x_min, self.x_max)
-            self.draw_graph(
-                self.canvas, func, self.x_min, self.x_max, -y_range, y_range
-            )
+            self.draw_graph(func, self.x_min, self.x_max, -y_range, y_range)
 
-    def draw_graph(self, canvas, func, x_min, x_max, y_min, y_max):
-        window_width = canvas.winfo_width()
-        window_height = canvas.winfo_height()
+    def draw_graph(self, func, x_min, x_max, y_min, y_max):
+        window_width = self.canvas.winfo_width()
+        window_height = self.canvas.winfo_height()
 
         x_scale = window_width / (x_max - x_min)
         y_scale = window_height / (y_max - y_min)
 
-        canvas.create_line(
+        self.canvas.create_line(
             0, window_height / 2, window_width, window_height / 2, fill="black"
         )
-        canvas.create_line(
+        self.canvas.create_line(
             window_width / 2, 0, window_width / 2, window_height, fill="black"
         )
         previous_point = None
@@ -90,7 +88,7 @@ class GraphDraw:
             y_pixel = window_height - (y - y_min) * y_scale
 
             if previous_point:
-                canvas.create_line(
+                self.canvas.create_line(
                     previous_point[0], previous_point[1], x_pixel, y_pixel, fill="blue"
                 )
 
@@ -106,5 +104,9 @@ functions = {
     "x^3": lambda x: x**3,
 }
 
-graph_draw = GraphDraw(functions=functions, x_min=-10, x_max=10)
+graph_draw = GraphDraw(
+    x_min=-10,
+    x_max=10,
+    functions=functions,
+)
 graph_draw.start()
