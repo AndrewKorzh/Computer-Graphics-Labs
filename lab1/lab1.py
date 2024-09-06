@@ -75,10 +75,20 @@ class GraphDraw:
         y_scale = window_height / (y_max - y_min)
 
         self.canvas.create_line(
-            0, window_height / 2, window_width, window_height / 2, fill="black"
+            0,
+            window_height / 2,
+            window_width,
+            window_height / 2,
+            fill="black",
+            arrow="last",
         )
         self.canvas.create_line(
-            window_width / 2, 0, window_width / 2, window_height, fill="black"
+            window_width / 2,
+            0,
+            window_width / 2,
+            window_height,
+            fill="black",
+            arrow="first",
         )
         previous_point = None
         for x_pixel in range(window_width):
