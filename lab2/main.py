@@ -63,23 +63,15 @@ class Lab2:
             fg="white",
         )
 
-        # Надпись - путь - размещение
         self.path_label.grid(row=0, column=0, columnspan=3, pady=3, sticky="nsew")
         self.root.grid_columnconfigure(0, weight=1)
 
-        # Окно - путь - размещение
         self.path_entry.grid(
             row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew"
         )
-        # self.root.grid_columnconfigure(1, weight=1)
 
-        # Кнопка загрузки
         self.load_button.grid(row=1, column=2, pady=3)
-
-        # Кнопка загрузки
         self.browse_button.grid(row=2, column=0, pady=3, columnspan=3)
-
-        # Это пространство для фото
         self.image_label.grid(row=3, column=0, columnspan=3, sticky="nsew")
 
     def load_image(self):
@@ -96,9 +88,7 @@ class Lab2:
             image = ImageTk.PhotoImage(image)
             self.image_label.config(image=image)
             self.image_label.image = image
-            self.root.geometry(
-                f"{image.width()}x{image.height() + 185}"
-            )  # Изменение размера окна
+            self.root.geometry(f"{image.width()}x{image.height() + 185}")
 
             self.gcode_button.grid(row=5, column=0, pady=2, columnspan=3, sticky="nsew")
             self.silkscreen_button.grid(
