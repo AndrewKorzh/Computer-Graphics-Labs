@@ -32,8 +32,6 @@ class Task2Window:
         )
 
     def start(self):
-        print(f"Output path: {self.parent.output_path}")
-        print(f"Image: {self.parent.path_entry.get()}")
         image = Image.open(self.parent.path_entry.get())
         image_array = np.array(image)
 
@@ -59,14 +57,22 @@ class Task2Window:
 
         fig, axs = plt.subplots(1, 3, figsize=(18, 5))
 
-        axs[0].hist(R.ravel(), bins=256, color="red", alpha=0.6)
-        print(axs[0])
+        r_hist = [0] * 256
+        for value in R.ravel():
+            r_hist[value] += 1
+        axs[0].bar(range(256), r_hist, color="red", alpha=0.6)
         axs[0].set_title("hexagram for R-сhanel")
 
-        axs[1].hist(G.ravel(), bins=256, color="green", alpha=0.6)
+        g_hist = [0] * 256
+        for value in G.ravel():
+            g_hist[value] += 1
+        axs[1].bar(range(256), g_hist, color="green", alpha=0.6)
         axs[1].set_title("hexagram for G-сhanel")
 
-        axs[2].hist(B.ravel(), bins=256, color="blue", alpha=0.6)
+        b_hist = [0] * 256
+        for value in B.ravel():
+            b_hist[value] += 1
+        axs[2].bar(range(256), b_hist, color="blue", alpha=0.6)
         axs[2].set_title("hexagram for B-сhanel")
 
         plt.show()
