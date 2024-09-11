@@ -1,9 +1,12 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import filedialog
+from windows.task1_window import Task1Window
+from windows.task2_window import Task2Window
+from windows.task3_window import Task3Window
 
 
-class PrintMaker:
+class Lab2:
     def __init__(self, root: tk.Tk):
         self.back_ground = "#333"
 
@@ -34,27 +37,28 @@ class PrintMaker:
             fg="white",
         )
 
+        # task1
         self.gcode_button = tk.Button(
             root,
-            text="g_code",
-            command=self.open_g_code_window,
+            text="task1",
+            command=self.task1,
             bg="#555",
             fg="white",
         )
-        # Silkscreen
+        # task2
         self.silkscreen_button = tk.Button(
             root,
-            text="silkscreen",
-            command=self.open_silkscreen_window,
+            text="task2",
+            command=self.task2,
             bg="#555",
             fg="white",
         )
 
-        # Lego
+        # task3
         self.lego_button = tk.Button(
             root,
-            text="lego",
-            command=self.open_lego_window,
+            text="task3",
+            command=self.task3,
             bg="#555",
             fg="white",
         )
@@ -114,17 +118,20 @@ class PrintMaker:
             self.path_entry.insert(tk.END, filename)
             self.load_image()
 
-    def open_g_code_window(self):
-        print("open_g_code_window")
+    def task1(self):
+        child = tk.Tk()
+        g_code_window = Task1Window(root=child, parent=self)
 
-    def open_lego_window(self):
-        print("open_lego_window")
+    def task2(self):
+        child = tk.Tk()
+        g_code_window = Task2Window(root=child, parent=self)
 
-    def open_silkscreen_window(self):
-        print("open_silkscreen_window")
+    def task3(self):
+        child = tk.Tk()
+        g_code_window = Task3Window(root=child, parent=self)
 
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = PrintMaker(root)
+    app = Lab2(root)
     root.mainloop()
