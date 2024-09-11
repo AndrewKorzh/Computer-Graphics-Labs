@@ -2,11 +2,8 @@ import os
 import tkinter as tk
 import numpy as np
 
-from PIL import Image
 import matplotlib.pyplot as plt
-
-
-# Сделать отдельные функции а не использовать встроенные
+from PIL import Image
 
 
 class Task2Window:

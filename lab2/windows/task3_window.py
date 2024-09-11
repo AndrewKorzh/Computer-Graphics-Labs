@@ -1,9 +1,4 @@
-import matplotlib.pyplot as plt
-from PIL import Image
-import numpy as np
 import tkinter as tk
-from tkinter import filedialog
-from PIL import Image, ImageTk
 
 
 class Task3Window:
