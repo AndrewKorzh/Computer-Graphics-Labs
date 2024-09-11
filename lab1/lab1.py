@@ -12,7 +12,7 @@ class GraphDraw:
         functions={"None": None},
     ):
         """
-        param: functions - dict with functions
+        param: functions - dict with functions (функции в конструктор пробрасываем)
         """
         self.functions = functions
         self.width = width
