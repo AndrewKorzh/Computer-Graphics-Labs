@@ -1,5 +1,3 @@
+**/output/
+**/photos/
 **/__pycache__/
-*.png
-*.jpg
-*.tkl
-**/archive/
