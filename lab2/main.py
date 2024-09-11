@@ -1,6 +1,8 @@
+import os
 import tkinter as tk
-from PIL import Image, ImageTk
 from tkinter import filedialog
+from PIL import Image, ImageTk
+
 from windows.task1_window import Task1Window
 from windows.task2_window import Task2Window
 from windows.task3_window import Task3Window
@@ -13,6 +15,7 @@ class Lab2:
         self.window_max = 600
 
         self.root = root
+        self.output_path = self.create_and_get_folder_path("output")
         self.root.title("Lab2:")
         self.root.configure(bg=self.back_ground)
         self.root.geometry("400x300+20+20")
@@ -107,6 +110,13 @@ class Lab2:
             self.path_entry.delete(0, tk.END)
             self.path_entry.insert(tk.END, filename)
             self.load_image()
+
+    def create_and_get_folder_path(self, folder_name):
+        root_dir = os.path.abspath(os.getcwd())
+        folder_path = os.path.join(root_dir, folder_name)
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+        return folder_path
 
     def task1(self):
         child = tk.Tk()

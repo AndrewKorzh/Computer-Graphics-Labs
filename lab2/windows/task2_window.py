@@ -14,6 +14,8 @@ class Task2Window:
         self.root.geometry("230x180+500+20")
         self.root.title("task2")
 
+        print(f"from w2: output path: {self.parent.output_path}")
+
 
 # image = Image.open("dog.jpg")
 # image_array = np.array(image)
