@@ -18,7 +18,7 @@ class Lab2:
         self.output_path = self.create_and_get_folder_path("output")
         self.root.title("Lab2:")
         self.root.configure(bg=self.back_ground)
-        self.root.geometry("400x300+20+20")
+        self.root.geometry("400x300+1+1")
         self.path_label = tk.Label(root, text="Image_Path", bg="#333", fg="white")
         self.image_label = tk.Label(root, bg="#333")
         self.path_entry = tk.Entry(root)
