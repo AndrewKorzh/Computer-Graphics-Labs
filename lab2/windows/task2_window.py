@@ -42,15 +42,12 @@ class Task2Window:
         G_image[:, :, 1] = G
         B_image[:, :, 2] = B
 
-        Image.fromarray(R_image).save(
-            os.path.join(self.parent.output_path, "R_channel.jpg")
-        )
-        Image.fromarray(G_image).save(
-            os.path.join(self.parent.output_path, "G_channel.jpg")
-        )
-        Image.fromarray(B_image).save(
-            os.path.join(self.parent.output_path, "B_channel.jpg")
-        )
+        output_dir = os.path.join(self.parent.output_path, "task2")
+        os.makedirs(output_dir, exist_ok=True)
+
+        Image.fromarray(R_image).save(os.path.join(output_dir, "R_channel.jpg"))
+        Image.fromarray(G_image).save(os.path.join(output_dir, "G_channel.jpg"))
+        Image.fromarray(B_image).save(os.path.join(output_dir, "B_channel.jpg"))
 
         fig, axs = plt.subplots(1, 3, figsize=(18, 5))
 
