@@ -55,6 +55,7 @@ class Task3Window:
         s_shift = self.saturation_slider.get() / 100.0
         v_shift = self.value_slider.get() / 100.0
 
+        self.image = Image.open(self.parent.path_entry.get())
         self.img_array = np.array(self.image.convert("RGB"))
 
         hsv_img = np.array(
