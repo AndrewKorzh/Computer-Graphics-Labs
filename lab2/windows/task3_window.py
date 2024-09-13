@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 
 
 class Task3Window:
-    def __init__(self, root: tk.Tk, parent):
+    def __init__(self, root: tk.Toplevel, parent):
         self.root = root
         self.parent = parent
         self.output_path = self.parent.create_and_get_folder_path(

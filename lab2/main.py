@@ -127,7 +127,7 @@ class Lab2:
         g_code_window = Task2Window(root=child, parent=self)
 
     def task3(self):
-        child = tk.Tk()
+        child = tk.Toplevel()
         g_code_window = Task3Window(root=child, parent=self)
 
 
