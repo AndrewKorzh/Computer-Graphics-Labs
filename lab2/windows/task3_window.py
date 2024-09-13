@@ -50,6 +50,7 @@ class Task3Window:
         self.save_button.pack(pady=5)
 
     def process_image(self):
+        self.process_button.configure(state=tk.DISABLED)
         h_shift = self.hue_slider.get()
         s_shift = self.saturation_slider.get() / 100.0
         v_shift = self.value_slider.get() / 100.0
@@ -70,6 +71,7 @@ class Task3Window:
 
         self.img_display = ImageTk.PhotoImage(self.image)
         self.img_label.config(image=self.img_display)
+        self.process_button.configure(state=tk.NORMAL)
 
     def save_image(self):
         original_filename = os.path.basename(self.parent.path_entry.get())
