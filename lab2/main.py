@@ -41,7 +41,7 @@ class Lab2:
         )
 
         # task1
-        self.gcode_button = tk.Button(
+        self.task1_button = tk.Button(
             root,
             text="task1",
             command=self.task1,
@@ -49,7 +49,7 @@ class Lab2:
             fg="white",
         )
         # task2
-        self.silkscreen_button = tk.Button(
+        self.task2_button = tk.Button(
             root,
             text="task2",
             command=self.task2,
@@ -58,7 +58,7 @@ class Lab2:
         )
 
         # task3
-        self.lego_button = tk.Button(
+        self.task3_button = tk.Button(
             root,
             text="task3",
             command=self.task3,
@@ -93,11 +93,9 @@ class Lab2:
             self.image_label.image = image
             self.root.geometry(f"{image.width()}x{image.height() + 185}")
 
-            self.gcode_button.grid(row=5, column=0, pady=2, columnspan=3, sticky="nsew")
-            self.silkscreen_button.grid(
-                row=6, column=0, pady=2, columnspan=3, sticky="nsew"
-            )
-            self.lego_button.grid(row=7, column=0, pady=2, columnspan=3, sticky="nsew")
+            self.task1_button.grid(row=5, column=0, pady=2, columnspan=3, sticky="nsew")
+            self.task2_button.grid(row=6, column=0, pady=2, columnspan=3, sticky="nsew")
+            self.task3_button.grid(row=7, column=0, pady=2, columnspan=3, sticky="nsew")
 
         except Exception as e:
             print("Error loading image:", e)
@@ -120,15 +118,15 @@ class Lab2:
 
     def task1(self):
         child = tk.Tk()
-        g_code_window = Task1Window(root=child, parent=self)
+        task1_window = Task1Window(root=child, parent=self)
 
     def task2(self):
         child = tk.Tk()
-        g_code_window = Task2Window(root=child, parent=self)
+        task2_window = Task2Window(root=child, parent=self)
 
     def task3(self):
         child = tk.Toplevel()
-        g_code_window = Task3Window(root=child, parent=self)
+        task3_window = Task3Window(root=child, parent=self)
 
 
 if __name__ == "__main__":
