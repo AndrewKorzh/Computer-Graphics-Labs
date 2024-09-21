@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
+from PIL import Image, ImageTk
 
 
 class Task1Window:
@@ -163,15 +164,25 @@ class Task1aWindow:
 
     def paint(self, event):
         self.last_x, self.last_y = event.x, event.y
+        oval_size = 10
+
         self.canvas.create_oval(
-            self.last_x,
-            self.last_y,
-            self.last_x + 1,
-            self.last_y + 1,
+            self.last_x - oval_size // 2,
+            self.last_y - oval_size // 2,
+            self.last_x + oval_size // 2,
+            self.last_y + oval_size // 2,
             fill="black",
             outline="black",
         )
-        self.boarders.add((self.last_x, self.last_y))
+
+        for x in range(self.last_x - oval_size // 2, self.last_x + oval_size // 2 + 1):
+            for y in range(
+                self.last_y - oval_size // 2, self.last_y + oval_size // 2 + 1
+            ):
+                if (x - self.last_x) ** 2 + (y - self.last_y) ** 2 <= (
+                    oval_size // 2
+                ) ** 2:
+                    self.boarders.add((x, y))
 
 
 class Task1bWindow:
@@ -184,6 +195,8 @@ class Task1bWindow:
         self.root.title("task1b")
         self.canvas = tk.Canvas(self.root, width=self.width, height=self.height)
         self.image_path = ""
+        self.image = None
+        self.frames_for_update = 100
 
         self.boarders = set()
         self.passed_val = set()
@@ -219,6 +232,7 @@ class Task1bWindow:
         )
         if filename:
             self.image_path = filename
+            self.image = Image.open(self.image_path)
 
     def fill(self):
         print(self.image_path)
@@ -238,16 +252,24 @@ class Task1bWindow:
         else:
             return False
 
+    def get_hex_pixel(self, x, y):
+        r, g, b = self.image.getpixel((x % self.image.width, y % self.image.height))
+        return "#{:02x}{:02x}{:02x}".format(r, g, b)
+
     def stack_fill(self, event):
         self.canvas.unbind("<B1-Motion>")
         x_start, y_start = event.x, event.y
         stack = [(x_start, y_start)]
 
+        frame_count = 0
         while stack:
+            frame_count += 1
             x, y = stack.pop()
             # Тут надо доставать пиксель из фотки - просто достаточно
-            self.canvas.create_oval(x, y, x + 1, y + 1, fill="red", outline="red")
-            self.canvas.update()
+            color = self.get_hex_pixel(x, y)
+            self.canvas.create_oval(x, y, x + 1, y + 1, fill=color, outline=color)
+            if frame_count % self.frames_for_update == 0:
+                self.canvas.update()
             if self.check_validity(x + 1, y):
                 self.passed_val.add((x + 1, y))
                 stack.append((x + 1, y))
@@ -270,15 +292,25 @@ class Task1bWindow:
 
     def paint(self, event):
         self.last_x, self.last_y = event.x, event.y
+        oval_size = 10
+
         self.canvas.create_oval(
-            self.last_x,
-            self.last_y,
-            self.last_x + 1,
-            self.last_y + 1,
+            self.last_x - oval_size // 2,
+            self.last_y - oval_size // 2,
+            self.last_x + oval_size // 2,
+            self.last_y + oval_size // 2,
             fill="black",
             outline="black",
         )
-        self.boarders.add((self.last_x, self.last_y))
+
+        for x in range(self.last_x - oval_size // 2, self.last_x + oval_size // 2 + 1):
+            for y in range(
+                self.last_y - oval_size // 2, self.last_y + oval_size // 2 + 1
+            ):
+                if (x - self.last_x) ** 2 + (y - self.last_y) ** 2 <= (
+                    oval_size // 2
+                ) ** 2:
+                    self.boarders.add((x, y))
 
 
 class Task1cWindow:
