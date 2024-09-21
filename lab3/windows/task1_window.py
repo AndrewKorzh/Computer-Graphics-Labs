@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 from PIL import Image, ImageTk
+import math
 
 
 class Task1Window:
@@ -189,6 +190,7 @@ class Task1bWindow:
     def __init__(self, root: tk.Tk, parent):
         self.root = root
         self.parent = parent
+        self.root.geometry("230x120+500+20")
         self.width = 800
         self.height = 600
         self.root.configure(bg=parent.back_ground)
@@ -265,7 +267,6 @@ class Task1bWindow:
         while stack:
             frame_count += 1
             x, y = stack.pop()
-            # Тут надо доставать пиксель из фотки - просто достаточно
             color = self.get_hex_pixel(x, y)
             self.canvas.create_oval(x, y, x + 1, y + 1, fill=color, outline=color)
             if frame_count % self.frames_for_update == 0:
@@ -317,10 +318,130 @@ class Task1cWindow:
     def __init__(self, root: tk.Tk, parent):
         self.root = root
         self.parent = parent
-        self.width = 800
-        self.height = 600
         self.root.configure(bg=parent.back_ground)
+        self.frames_for_update = 10000
+        self.passed_val = set()
 
-        self.root.title("task1c")
-        self.canvas = tk.Canvas(self.root, width=self.width, height=self.height)
-        self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.root.title("Task1c")
+
+        self.image_tk = None
+        self.image = None
+
+        self.browse_button = tk.Button(
+            root,
+            text="Browse Image",
+            command=self.browse_file,
+            bg="#555",
+            fg="white",
+            width=20,
+        )
+        self.browse_button.pack(side=tk.TOP, pady=5)
+
+        self.canvas = tk.Canvas(self.root)
+        self.canvas.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        self.image_tk = None
+        self.image = None
+        self.canvas.bind("<B1-Motion>", self.connected_area)
+
+    def browse_file(self):
+        filename = filedialog.askopenfilename(
+            filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif")]
+        )
+        if filename:
+            self.image_path = filename
+            self.image = Image.open(self.image_path)
+            self.width, self.height = self.image.size
+            self.canvas.config(width=self.width, height=self.height)
+            self.canvas.delete("all")
+            self.draw_image()
+
+    def draw_image(self):
+        frames_count = 0
+        for x in range(self.width):
+            for y in range(self.height):
+                frames_count += 1
+                if frames_count % self.frames_for_update == 0:
+                    self.root.update()
+                r, g, b = self.image.getpixel((x, y))
+                hex_color = f"#{r:02x}{g:02x}{b:02x}"
+
+                self.canvas.create_rectangle(
+                    x, y, x + 1, y + 1, outline=hex_color, fill=hex_color
+                )
+
+    def check_validity_and_color(self, x, y, color):
+        if (
+            (x, y) not in self.passed_val
+            and 0 <= x < self.width
+            and 0 <= y < self.height
+        ):
+            r, g, b = self.image.getpixel((x, y))
+            current_color = f"#{r:02x}{g:02x}{b:02x}"
+
+            return current_color == color
+        else:
+            return False
+
+    def check_validity_and_color_in_range(self, x, y, color, threshold=50):
+        if (
+            (x, y) not in self.passed_val
+            and 0 <= x < self.width
+            and 0 <= y < self.height
+        ):
+            r, g, b = self.image.getpixel((x, y))
+            current_color = (r, g, b)
+
+            target_r = int(color[1:3], 16)
+            target_g = int(color[3:5], 16)
+            target_b = int(color[5:7], 16)
+            color_rgb = (target_r, target_g, target_b)
+
+            distance = math.sqrt(
+                (current_color[0] - color_rgb[0]) ** 2
+                + (current_color[1] - color_rgb[1]) ** 2
+                + (current_color[2] - color_rgb[2]) ** 2
+            )
+
+            return distance <= threshold
+        else:
+            return False
+
+    def connected_area(self, event):
+        # check_function = self.check_validity_and_color
+        check_function = self.check_validity_and_color_in_range
+        self.canvas.unbind("<B1-Motion>")
+        x_start, y_start = event.x, event.y
+
+        r, g, b = self.image.getpixel((x_start, y_start))
+        color = f"#{r:02x}{g:02x}{b:02x}"
+
+        stack = [(x_start, y_start)]
+        self.passed_val.add((x_start, y_start))
+
+        frames_count = 0
+        while stack:
+            x, y = stack.pop()
+            self.canvas.create_oval(x, y, x + 1, y + 1, fill="red", outline="red")
+            frames_count += 1
+            if frames_count % (self.frames_for_update // 10) == 0:
+                self.root.update()
+
+            if check_function(x + 1, y, color):
+                self.passed_val.add((x + 1, y))
+                stack.append((x + 1, y))
+
+            if check_function(x - 1, y, color):
+                self.passed_val.add((x - 1, y))
+                stack.append((x - 1, y))
+
+            if check_function(x, y + 1, color):
+                self.passed_val.add((x, y + 1))
+                stack.append((x, y + 1))
+
+            if check_function(x, y - 1, color):
+                self.passed_val.add((x, y - 1))
+                stack.append((x, y - 1))
+
+        print("Done")
+        self.canvas.bind("<B1-Motion>", self.connected_area)
+        return
