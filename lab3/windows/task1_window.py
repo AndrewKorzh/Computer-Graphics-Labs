@@ -69,6 +69,8 @@ class Task1aWindow:
         self.root.title("task1a")
         self.canvas = tk.Canvas(self.root, width=self.width, height=self.height)
 
+        self.frames_for_update = 1000
+
         self.boarders = set()
         self.passed_val = set()
 
@@ -108,11 +110,13 @@ class Task1aWindow:
         self.canvas.unbind("<B1-Motion>")
         x_start, y_start = event.x, event.y
         stack = [(x_start, y_start)]
-
+        frames_count = 0
         while stack:
+            frames_count += 1
             x, y = stack.pop()
             self.canvas.create_oval(x, y, x + 1, y + 1, fill="red", outline="red")
-            self.canvas.update()
+            if frames_count % self.frames_for_update == 0:
+                self.root.update()
             if self.check_validity(x + 1, y):
                 self.passed_val.add((x + 1, y))
                 stack.append((x + 1, y))
@@ -190,7 +194,7 @@ class Task1bWindow:
     def __init__(self, root: tk.Tk, parent):
         self.root = root
         self.parent = parent
-        self.root.geometry("230x120+500+20")
+        self.root.geometry("800x500+500+20")
         self.width = 800
         self.height = 600
         self.root.configure(bg=parent.back_ground)
@@ -198,7 +202,7 @@ class Task1bWindow:
         self.canvas = tk.Canvas(self.root, width=self.width, height=self.height)
         self.image_path = ""
         self.image = None
-        self.frames_for_update = 100
+        self.frames_for_update = 1000
 
         self.boarders = set()
         self.passed_val = set()
@@ -237,7 +241,6 @@ class Task1bWindow:
             self.image = Image.open(self.image_path)
 
     def fill(self):
-        print(self.image_path)
         self.canvas.unbind("<B1-Motion>")
         self.canvas.bind("<B1-Motion>", self.stack_fill)
 
