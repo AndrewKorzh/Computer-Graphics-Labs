@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import filedialog
 
 
 class Task1Window:
@@ -182,6 +183,102 @@ class Task1bWindow:
         self.root.configure(bg=parent.back_ground)
         self.root.title("task1b")
         self.canvas = tk.Canvas(self.root, width=self.width, height=self.height)
+        self.image_path = ""
+
+        self.boarders = set()
+        self.passed_val = set()
+
+        self.fill_button = tk.Button(
+            root,
+            text="fill",
+            command=self.fill,
+            bg="#555",
+            fg="white",
+            width=100,
+        )
+        self.fill_button.pack(side=tk.TOP, pady=5)
+
+        self.browse_button = tk.Button(
+            root,
+            text="browse",
+            command=self.browse_file,
+            bg="#555",
+            fg="white",
+            width=100,
+        )
+        self.browse_button.pack(side=tk.TOP, pady=5)
+
+        self.canvas.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        self.canvas.bind("<B1-Motion>", self.paint)
+        self.last_x, self.last_y = None, None
+
+    def browse_file(self):
+        filename = filedialog.askopenfilename(
+            filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif")]
+        )
+        if filename:
+            self.image_path = filename
+
+    def fill(self):
+        print(self.image_path)
+        self.canvas.unbind("<B1-Motion>")
+        self.canvas.bind("<B1-Motion>", self.stack_fill)
+
+    def check_validity(self, x, y):
+        if (
+            (x, y) not in self.boarders
+            and (x, y) not in self.passed_val
+            and x > 0
+            and x < self.width - 2
+            and y > 0
+            and y < self.height - 2
+        ):
+            return True
+        else:
+            return False
+
+    def stack_fill(self, event):
+        self.canvas.unbind("<B1-Motion>")
+        x_start, y_start = event.x, event.y
+        stack = [(x_start, y_start)]
+
+        while stack:
+            x, y = stack.pop()
+            # Тут надо доставать пиксель из фотки - просто достаточно
+            self.canvas.create_oval(x, y, x + 1, y + 1, fill="red", outline="red")
+            self.canvas.update()
+            if self.check_validity(x + 1, y):
+                self.passed_val.add((x + 1, y))
+                stack.append((x + 1, y))
+
+            if self.check_validity(x - 1, y):
+                self.passed_val.add((x - 1, y))
+                stack.append((x - 1, y))
+
+            if self.check_validity(x, y + 1):
+                self.passed_val.add((x, y + 1))
+                stack.append((x, y + 1))
+
+            if self.check_validity(x, y - 1):
+                self.passed_val.add((x, y - 1))
+                stack.append((x, y - 1))
+
+        print("Done")
+        self.canvas.bind("<B1-Motion>", self.paint)
+        return
+
+    def paint(self, event):
+        self.last_x, self.last_y = event.x, event.y
+        self.canvas.create_oval(
+            self.last_x,
+            self.last_y,
+            self.last_x + 1,
+            self.last_y + 1,
+            fill="black",
+            outline="black",
+        )
+        self.boarders.add((self.last_x, self.last_y))
 
 
 class Task1cWindow:
