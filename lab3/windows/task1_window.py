@@ -324,6 +324,7 @@ class Task1cWindow:
         self.root.configure(bg=parent.back_ground)
         self.frames_for_update = 10000
         self.passed_val = set()
+        self.color_for_fill = "#00CCCC"
 
         self.root.title("Task1c")
 
@@ -353,10 +354,24 @@ class Task1cWindow:
         if filename:
             self.image_path = filename
             self.image = Image.open(self.image_path)
-            self.width, self.height = self.image.size
-            self.canvas.config(width=self.width, height=self.height)
-            self.canvas.delete("all")
-            self.draw_image()
+
+            # Resize the image if necessary
+            max_size = 500
+            if self.image.width > max_size or self.image.height > max_size:
+                ratio = min(max_size / self.image.width, max_size / self.image.height)
+                new_width = int(self.image.width * ratio)
+                new_height = int(self.image.height * ratio)
+                self.image = self.image.resize((new_width, new_height), Image.LANCZOS)
+                self.width, self.height = self.image.size
+                self.canvas.config(width=self.width, height=self.height)
+                self.canvas.delete("all")
+                self.draw_image()
+            else:
+
+                self.width, self.height = self.image.size
+                self.canvas.config(width=self.width, height=self.height)
+                self.canvas.delete("all")
+                self.draw_image()
 
     def draw_image(self):
         frames_count = 0
@@ -424,7 +439,14 @@ class Task1cWindow:
         frames_count = 0
         while stack:
             x, y = stack.pop()
-            self.canvas.create_oval(x, y, x + 1, y + 1, fill="red", outline="red")
+            self.canvas.create_oval(
+                x,
+                y,
+                x + 1,
+                y + 1,
+                fill=self.color_for_fill,
+                outline=self.color_for_fill,
+            )
             frames_count += 1
             if frames_count % (self.frames_for_update // 10) == 0:
                 self.root.update()
