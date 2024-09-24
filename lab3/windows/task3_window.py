@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.tri import Triangulation
 
+
 class Task3Window:
     def __init__(self, root: tk.Tk, parent):
         self.root = root
@@ -38,7 +39,7 @@ class Task3Window:
             command=self.draw_gradient_triangle,
             bg="#555",
             fg="white",
-            width=30
+            width=30,
         )
         self.gradient_button.pack(pady=20)
 
@@ -47,12 +48,19 @@ class Task3Window:
 
     def draw_gradient_triangle(self):
 
-        triangle = np.array([[float(entry_x.get()), float(entry_y.get())] for entry_x, entry_y in self.entry_fields])
+        triangle = np.array(
+            [
+                [float(entry_x.get()), float(entry_y.get())]
+                for entry_x, entry_y in self.entry_fields
+            ]
+        )
 
-        vertex_colors = np.array([
-            [float(entry_r.get()), float(entry_g.get()), float(entry_b.get())]
-            for entry_r, entry_g, entry_b in self.color_fields
-        ])
+        vertex_colors = np.array(
+            [
+                [float(entry_r.get()), float(entry_g.get()), float(entry_b.get())]
+                for entry_r, entry_g, entry_b in self.color_fields
+            ]
+        )
 
         fig, ax = plt.subplots(figsize=(6, 6))
         ax.set_xlim(0, 400)
@@ -82,16 +90,22 @@ class Task3Window:
         for x in range(min_x, max_x):
             for y in range(min_y, max_y):
                 point = np.array([x, y])
-                u, v, w = barycentric_coords(point, triangle[0], triangle[1], triangle[2])
+                u, v, w = barycentric_coords(
+                    point, triangle[0], triangle[1], triangle[2]
+                )
 
                 # Если точка внутри треугольника (все барицентрические координаты >= 0)
                 if u >= 0 and v >= 0 and w >= 0:
                     # Интерполируем цвет на основе барицентрических координат
-                    color = u * vertex_colors[0] + v * vertex_colors[1] + w * vertex_colors[2]
+                    color = (
+                        u * vertex_colors[0]
+                        + v * vertex_colors[1]
+                        + w * vertex_colors[2]
+                    )
                     ax.add_patch(plt.Circle((x, y), 0.5, color=color, lw=0))
 
         ax.invert_yaxis()
-        ax.axis('off')
+        ax.axis("off")
 
         for widget in self.canvas_frame.winfo_children():
             widget.destroy()

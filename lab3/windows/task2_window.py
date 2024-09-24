@@ -31,6 +31,15 @@ class Task2Window:
         self.image_bresenham = None
         self.image_wu = None
 
+        self.current_point_bresenham = None
+        self.current_point_wu = None
+
+        self.lines_bresenham = []
+        self.lines_wu = []
+
+        self.canvas_bresenham.bind("<Button-1>", self.on_click_bresenham)
+        self.canvas_wu.bind("<Button-1>", self.on_click_wu)
+
         self.draw_segments()
 
     def draw_segments(self):
@@ -40,12 +49,10 @@ class Task2Window:
         self.image_bresenham = Image.new("RGB", (width, height), "white")
         self.image_wu = Image.new("RGB", (width, height), "white")
 
-        self.draw_bresenham(
-            self.image_bresenham, 0.1 * width, 0.1 * height, 0.9 * width, 0.8 * height
-        )
-        self.draw_wu(
-            self.image_wu, 0.1 * width, 0.8 * height, 0.9 * width, 0.1 * height
-        )
+        for line in self.lines_bresenham:
+            self.draw_bresenham(self.image_bresenham, *line)
+        for line in self.lines_wu:
+            self.draw_wu(self.image_wu, *line)
 
         self.update_canvas()
 
@@ -128,3 +135,25 @@ class Task2Window:
             self.tk_image_wu = ImageTk.PhotoImage(self.image_wu)
             self.canvas_wu.create_image(0, 0, anchor="nw", image=self.tk_image_wu)
             self.canvas_wu.image = self.tk_image_wu
+
+    def on_click_bresenham(self, event):
+        if self.current_point_bresenham is None:
+            self.current_point_bresenham = (event.x, event.y)
+        else:
+            x1, y1 = self.current_point_bresenham
+            x2, y2 = event.x, event.y
+            self.draw_bresenham(self.image_bresenham, x1, y1, x2, y2)
+            self.lines_bresenham.append((x1, y1, x2, y2))
+            self.current_point_bresenham = (x2, y2)
+            self.update_canvas()
+
+    def on_click_wu(self, event):
+        if self.current_point_wu is None:
+            self.current_point_wu = (event.x, event.y)
+        else:
+            x1, y1 = self.current_point_wu
+            x2, y2 = event.x, event.y
+            self.draw_wu(self.image_wu, x1, y1, x2, y2)
+            self.lines_wu.append((x1, y1, x2, y2))
+            self.current_point_wu = (x2, y2)
+            self.update_canvas()
