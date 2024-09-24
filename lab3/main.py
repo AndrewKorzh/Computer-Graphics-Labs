@@ -52,7 +52,7 @@ class Lab3:
         task1_window = Task1Window(root=child, parent=self)
 
     def task2(self):
-        child = tk.Tk()
+        child = tk.Toplevel()
         task2_window = Task2Window(root=child, parent=self)
 
     def task3(self):
