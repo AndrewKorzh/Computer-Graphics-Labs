@@ -47,7 +47,7 @@ class Task2Window:
         height = self.canvas_bresenham.winfo_height()
 
         self.image_bresenham = Image.new("RGB", (width, height), "white")
-        self.image_wu = Image.new("RGB", (width, height), "white")
+        self.image_wu = Image.new("RGBA", (width, height), "white")
 
         for line in self.lines_bresenham:
             self.draw_bresenham(self.image_bresenham, *line)
@@ -67,7 +67,7 @@ class Task2Window:
         points = self.wu(int(x1), int(y1), int(x2), int(y2))
         for x, y, brightness in points:
             color = f"#{int(brightness * 255):02x}{int(brightness * 255):02x}{int(brightness * 255):02x}"
-            draw.point((x, y), fill=color)
+            draw.point((x, y), fill=(0, 0, 0, int(brightness * 255)))
 
     def bresenham(self, x1, y1, x2, y2):
         points = []

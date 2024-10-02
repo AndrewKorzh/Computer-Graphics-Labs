@@ -91,7 +91,7 @@ class Task1aWindow:
 
     def fill(self):
         self.canvas.unbind("<B1-Motion>")
-        self.canvas.bind("<B1-Motion>", self.stack_fill)
+        self.canvas.bind("<B1-Motion>", self.stack_fill_lines)
 
     def check_validity(self, x, y):
         if (
@@ -136,6 +136,42 @@ class Task1aWindow:
         print("Done")
         self.canvas.bind("<B1-Motion>", self.paint)
         return
+
+    def stack_fill_lines(self, event):
+        self.canvas.unbind("<B1-Motion>")
+        x_start, y_start = event.x, event.y
+        stack = [(x_start, y_start)]
+        pixel_count = 0
+
+        while stack:
+            pixel_count += 1
+            x, y = stack.pop()
+
+            x_left = x
+            while self.check_validity(x_left - 1, y):
+                x_left -= 1
+
+            x_right = x
+            while self.check_validity(x_right + 1, y):
+                x_right += 1
+
+            self.canvas.create_line(x_left, y, x_right, y, fill="red")
+
+            for nx in range(x_left, x_right + 1):
+                self.passed_val.add((nx, y))
+
+            if pixel_count % self.frames_for_update == 0:
+                self.root.update()
+
+            for nx in range(x_left, x_right + 1):
+                if self.check_validity(nx, y + 1):
+                    stack.append((nx, y + 1))
+
+                if self.check_validity(nx, y - 1):
+                    stack.append((nx, y - 1))
+
+        print("Done")
+        self.canvas.bind("<B1-Motion>", self.paint)
 
     def rec_fill(self, event):
         passed_val = set()
@@ -242,7 +278,7 @@ class Task1bWindow:
 
     def fill(self):
         self.canvas.unbind("<B1-Motion>")
-        self.canvas.bind("<B1-Motion>", self.stack_fill)
+        self.canvas.bind("<B1-Motion>", self.stack_fill_lines)
 
     def check_validity(self, x, y):
         if (
@@ -293,6 +329,46 @@ class Task1bWindow:
         print("Done")
         self.canvas.bind("<B1-Motion>", self.paint)
         return
+
+    def stack_fill_lines(self, event):
+        self.canvas.unbind("<B1-Motion>")
+        x_start, y_start = event.x, event.y
+        stack = [(x_start, y_start)]
+        pixel_count = 0
+
+        while stack:
+            pixel_count += 1
+            x, y = stack.pop()
+
+            x_left = x
+            while self.check_validity(x_left - 1, y):
+                x_left -= 1
+
+            x_right = x
+            while self.check_validity(x_right + 1, y):
+                x_right += 1
+
+            for nx in range(x_left, x_right + 1):
+                img_color = self.get_hex_pixel(nx, y)
+                self.canvas.create_oval(
+                    nx, y, nx + 1, y + 1, fill=img_color, outline=img_color
+                )
+
+            for nx in range(x_left, x_right + 1):
+                self.passed_val.add((nx, y))
+
+            if pixel_count % self.frames_for_update == 0:
+                self.root.update()
+
+            for nx in range(x_left, x_right + 1):
+                if self.check_validity(nx, y + 1):
+                    stack.append((nx, y + 1))
+
+                if self.check_validity(nx, y - 1):
+                    stack.append((nx, y - 1))
+
+        print("Done")
+        self.canvas.bind("<B1-Motion>", self.paint)
 
     def paint(self, event):
         self.last_x, self.last_y = event.x, event.y
