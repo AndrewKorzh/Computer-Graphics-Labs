@@ -251,9 +251,9 @@ class PolygonEditor:
     def get_point_position_relative_to_line(self, px, py, x1, y1, x2, y2):
         """Определение положения точки относительно прямой"""
         determinant = (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1)
-        if determinant > 0:
+        if determinant < 0:
             return "Слева"
-        elif determinant < 0:
+        elif determinant > 0:
             return "Справа"
         else:
             return "На линии"
