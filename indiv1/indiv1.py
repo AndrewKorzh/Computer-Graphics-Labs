@@ -31,7 +31,7 @@ def convex_hull(points):
 
 
 np.random.seed(0)
-points = np.random.rand(1000, 2)
+points = np.random.rand(100, 2)
 
 hull = convex_hull(points)
 
