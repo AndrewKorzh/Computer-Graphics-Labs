@@ -3,12 +3,11 @@ import numpy as np
 from collections import deque
 import random
 
-# Основные параметры для удобства настройки
-default_iterations = 0  # Число итераций
-default_start_direction = 90  # Начальный угол поворота
-default_angle = 60  # Угол поворота
-l_systems_index = 4
-iterations = [i for i in range(15, 16)]
+
+default_iterations = 0
+default_start_direction = 90
+l_systems_index = 3
+iterations = [i for i in range(10, 11)]
 
 # Определение L-систем
 l_systems = [
@@ -23,7 +22,7 @@ l_systems = [
     {
         "atom": "F",
         "rules": {"F": "F+F-F-F+F"},
-        "angle": -90,
+        "angle": 90,
         "start_direction": 0,
     },
     # Треугольник Серпинского
