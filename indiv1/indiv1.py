@@ -30,14 +30,11 @@ def convex_hull(points):
     return lower[:-1] + upper[:-1]
 
 
-# Генерация случайных точек
 np.random.seed(0)
-points = np.random.rand(300, 2)
+points = np.random.rand(1000, 2)
 
-# Построение выпуклой оболочки
 hull = convex_hull(points)
 
-# Визуализация
 plt.figure(figsize=(8, 6))
 plt.scatter(points[:, 0], points[:, 1], color="blue", label="Точки")
 plt.scatter(
