@@ -1,10 +1,9 @@
 import matplotlib.pyplot as plt
 from matplotlib.backend_bases import MouseButton
 from matplotlib.patches import Circle
-from scipy.interpolate import make_interp_spline
 import numpy as np
 
-class BezierEditor:
+class SplineEditor:
     def __init__(self):
         self.fig, self.ax = plt.subplots()
         self.points = []
@@ -36,17 +35,54 @@ class BezierEditor:
         self.circles.pop(index)
         self.update_curve()
 
+    def calculate_cubic_spline(self):
+        points = np.array(self.points)
+        x, y = points[:, 0], points[:, 1]
+        n = len(x) - 1  # количество сегментов
+
+        # Коэффициенты для каждой кривой
+        h = np.diff(x)
+        alpha = np.zeros(n)
+        for i in range(1, n):
+            alpha[i] = (3 / h[i] * (y[i + 1] - y[i]) - 3 / h[i - 1] * (y[i] - y[i - 1]))
+
+        # Решаем систему линейных уравнений для нахождения c
+        l = np.ones(n + 1)
+        mu = np.zeros(n)
+        z = np.zeros(n + 1)
+        for i in range(1, n):
+            l[i] = 2 * (x[i + 1] - x[i - 1]) - h[i - 1] * mu[i - 1]
+            mu[i] = h[i] / l[i]
+            z[i] = (alpha[i] - h[i - 1] * z[i - 1]) / l[i]
+
+        # Вычисление коэффициентов c, b, и d для каждого сегмента
+        b = np.zeros(n)
+        c = np.zeros(n + 1)
+        d = np.zeros(n)
+        a = y[:-1]
+
+        for j in range(n - 1, -1, -1):
+            c[j] = z[j] - mu[j] * c[j + 1]
+            b[j] = (y[j + 1] - y[j]) / h[j] - h[j] * (c[j + 1] + 2 * c[j]) / 3
+            d[j] = (c[j + 1] - c[j]) / (3 * h[j])
+
+        # Создаем кривую
+        curve_points = []
+        for i in range(n):
+            xs = np.linspace(x[i], x[i + 1], 20)
+            for xi in xs:
+                yi = (a[i] + b[i] * (xi - x[i]) + c[i] * (xi - x[i]) ** 2 + d[i] * (xi - x[i]) ** 3)
+                curve_points.append([xi, yi])
+
+        return np.array(curve_points)
+
     def update_curve(self):
         if self.curve:
             self.curve.remove()
-        if len(self.points) >= 4:
-            x_vals, y_vals = zip(*self.points)
-            t = np.linspace(0, 1, 100)
-            spline_x = make_interp_spline(range(len(x_vals)), x_vals, k=3)
-            spline_y = make_interp_spline(range(len(y_vals)), y_vals, k=3)
-            curve_points_x = spline_x(t * (len(x_vals) - 1))
-            curve_points_y = spline_y(t * (len(y_vals) - 1))
-            self.curve, = self.ax.plot(curve_points_x, curve_points_y, 'blue')
+
+        if len(self.points) >= 2:
+            curve_points = self.calculate_cubic_spline()
+            self.curve, = self.ax.plot(curve_points[:, 0], curve_points[:, 1], 'blue')
 
         self.fig.canvas.draw()
 
@@ -82,5 +118,5 @@ class BezierEditor:
         plt.show()
 
 if __name__ == "__main__":
-    editor = BezierEditor()
+    editor = SplineEditor()
     editor.show()
