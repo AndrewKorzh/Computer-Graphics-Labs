@@ -58,4 +58,4 @@ def draw_fractal_tree(branch_length=100, angle=90, depth=8):
     plt.show()
 
 
-draw_fractal_tree(branch_length=100, angle=90, depth=12)
+draw_fractal_tree(branch_length=100, angle=90, depth=10)

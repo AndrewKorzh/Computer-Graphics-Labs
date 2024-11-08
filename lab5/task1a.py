@@ -7,7 +7,7 @@ import random
 default_iterations = 0
 default_start_direction = 90
 l_systems_index = 3
-iterations = [i for i in range(10, 11)]
+iterations = [i for i in range(5, 6)]
 
 # Определение L-систем
 l_systems = [
@@ -69,6 +69,7 @@ def points_l_system(l_system_index):
     rules = system["rules"]
 
     instructions = generate_l_system(axiom, rules, iterations)
+    print(instructions)
 
     x, y = 0, 0
     stack = []
