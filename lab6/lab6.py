@@ -2,6 +2,51 @@ import tkinter as tk
 import numpy as np
 
 
+class Sphere:
+    def __init__(self, radius, segments, rings):
+        self.radius = radius
+        self.segments = segments
+        self.rings = rings
+        self.vertices = []
+        self.edges = []
+        self.generate_sphere()
+
+    def generate_sphere(self):
+        """Генерация вершин и рёбер для представления поверхности сферы."""
+        for i in range(self.rings + 1):  # Шаг по широте
+            theta = np.pi * i / self.rings  # Угол от 0 до pi (от полюса до полюса)
+            sin_theta = np.sin(theta)
+            cos_theta = np.cos(theta)
+
+            for j in range(self.segments):  # Шаг по долготе
+                phi = 2 * np.pi * j / self.segments  # Угол от 0 до 2*pi
+                x = self.radius * sin_theta * np.cos(phi)
+                y = self.radius * sin_theta * np.sin(phi)
+                z = self.radius * cos_theta
+                self.vertices.append((x, y, z))
+
+                # Добавление рёбер
+                # Соединяем точки вдоль долгот (вертикальные рёбра)
+                if j > 0:
+                    self.edges.append(
+                        (i * self.segments + j, i * self.segments + (j - 1))
+                    )
+                # Соединяем точки вдоль широт (горизонтальные рёбра)
+                if i > 0:
+                    self.edges.append(
+                        ((i - 1) * self.segments + j, i * self.segments + j)
+                    )
+
+            # Замыкание последней точки с первой вдоль долготы
+            self.edges.append(
+                (i * self.segments, i * self.segments + self.segments - 1)
+            )
+
+        # Замыкаем последние кольца
+        for j in range(self.segments):
+            self.edges.append(((self.rings - 1) * self.segments + j, j))
+
+
 class Camera:
     """Класс для камеры, которая определяет её положение и ориентацию."""
 
@@ -20,7 +65,7 @@ class Camera:
 
         y_axis = np.cross(z_axis, x_axis)
 
-        rotation_matrix = np.array([x_axis, y_axis, -z_axis])
+        rotation_matrix = np.array([x_axis, y_axis, z_axis])
 
         # Позиция камеры в пространстве
         translation_vector = -np.dot(rotation_matrix, self.position)
@@ -309,6 +354,14 @@ def get_polyhedron(name):
             (16, 18),
             (17, 19),
         ]
+    elif name == "sphere":
+        sphere = Sphere(radius=3.0, segments=20, rings=20)
+
+        vertices = np.array(sphere.vertices)
+
+        edges = sphere.edges
+        print(edges)
+
     return Polyhedron3D(vertices, edges)
 
 
@@ -398,7 +451,7 @@ class MainWindow:
 
         self.camera_position = [5, 5, 6]
         self.camera_look_at = [0, 0, 0]
-        self.camera_up_vector = [1, 1, 1]
+        self.camera_up_vector = [0, 0, 1]
 
         self.polyhedron_name = "cube"
         self.polyhedrons_names = [
@@ -407,6 +460,7 @@ class MainWindow:
             "octahedron",
             "icosahedron",
             "dodecahedron",
+            "sphere",
         ]
 
         self.projection_type = "perspective"
