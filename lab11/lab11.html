@@ -88,16 +88,9 @@
                 ]
             },
             fan: {
-                vertices: [
-                    0.0, 0.0, 1, 1, 1, // Центр (белый)
-                    -0.5, -0.5, 1, 0, 0, // Левый нижний (красный)
-                    -0.3, 0.0, 0, 1, 0, // Середина слева (зелёный)
-                    0.0, 0.3, 0, 0, 1, // Верхний центр (синий)
-                    0.3, 0.0, 1, 1, 0, // Середина справа (жёлтый)
-                    0.5, -0.5, 1, 0, 0 // Правый нижний (красный)
-                ]
-            },
-            pentagon: {
+                vertices: generateFanData()
+
+            }, pentagon: {
                 vertices: [
                     0.0, 0.0, 1, 1, 1, // Центр (белый)
                     0.0, 0.5, 1, 0, 0, // Верхняя вершина (красный)
@@ -109,6 +102,54 @@
                 ]
             }
         };
+
+        function generateFanData(startAngle = 0, endAngle = 180, colorStart = [0, 1, 0.9], colorEnd = [0.9, 0.12, 0], partitions = 10) {
+
+            const y_offset = -0.2
+            // Преобразуем углы в радианы
+            const startRad = startAngle * Math.PI / 180;
+            const endRad = endAngle * Math.PI / 180;
+
+            // Массив для хранения данных
+            let data = [];
+            data.push(0);
+            data.push(-0.5 + y_offset);
+            data.push(0);
+            data.push(0);
+            data.push(0);
+
+            // Примерный шаг между углами
+            const step = (endRad - startRad) / partitions;
+
+            // Генерация данных для каждой части
+            for (let i = 0; i <= partitions; i++) {
+                // Вычисляем текущий угол
+                const angle = startRad + i * step;
+
+                // Вычисляем синус и косинус текущего угла
+                const sinVal = Math.sin(angle);
+                const cosVal = Math.cos(angle);
+
+                // Плавный переход цвета
+                const t = i / partitions;
+                const r = colorStart[0] * (1 - t) + colorEnd[0] * t;
+                const g = colorStart[1] * (1 - t) + colorEnd[1] * t;
+                const b = colorStart[2] * (1 - t) + colorEnd[2] * t;
+
+                // Добавляем в массив (sin, cos и 3 значения цвета)
+                data.push(cosVal);
+                data.push(sinVal + y_offset);
+                data.push(r);
+                data.push(g);
+                data.push(b);
+            }
+
+            return data;
+        }
+
+        // Пример использования
+        const fanData = generateFanData(0, 180, [1, 1, 0], [0, 1, 1], 10);
+        console.log(fanData);
 
         // Шейдеры
         const vertexShaderSource = `
