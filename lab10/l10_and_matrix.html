@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Зелёный Треугольник на WebGL</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="webglCanvas"></canvas>
+
+    <script>
+        // Получаем WebGL контекст
+        const canvas = document.getElementById('webglCanvas');
+        const gl = canvas.getContext('webgl');
+
+        if (!gl) {
+            alert("WebGL не поддерживается вашим браузером!");
+        }
+
+        // Устанавливаем размер канваса
+        canvas.width = window.innerWidth; // ширина экрана
+        canvas.height = window.innerHeight; // высота экрана
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+
+        // Вершинный шейдер
+        const vertexShaderSource = `
+            attribute vec4 a_position;
+            uniform mat4 u_scaleMatrix;
+            void main(void) {
+                gl_Position = u_scaleMatrix * a_position; // Применение матрицы масштаба
+            }
+        `;
+
+        // Фрагментный шейдер
+        const fragmentShaderSource = `
+            precision mediump float;
+            void main(void) {
+                gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);  // Зелёный цвет
+            }
+        `;
+
+        // Функция для создания шейдера
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Ошибка компиляции шейдера: ' + gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        // Функция для создания программы шейдеров
+        function createProgram(gl, vertexShader, fragmentShader) {
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Ошибка линковки программы: ' + gl.getProgramInfoLog(program));
+                gl.deleteProgram(program);
+                return null;
+            }
+            return program;
+        }
+
+        // Создание шейдеров
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        // Создание шейдерной программы
+        const shaderProgram = createProgram(gl, vertexShader, fragmentShader);
+
+        // Получаем ссылки на атрибуты и униформы
+        const positionAttribLocation = gl.getAttribLocation(shaderProgram, 'a_position');
+
+        // Массив с координатами треугольника, который должен занять весь экран
+        const vertices = new Float32Array([
+            -0.1, -0.1,
+            0.1, -0.1,
+            0.0, 0.1
+        ]);
+
+        // Создание VBO (Vertex Buffer Object)
+        const vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        // Очистка экрана (фон канваса)
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Чёрный фон
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // Используем шейдерную программу
+        gl.useProgram(shaderProgram);
+
+        // Создаем матрицу масштаба
+        const scaleMatrix = new Float32Array([
+            5, 0, 0, 0,
+            0, 5, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ]);
+
+        // Получаем ссылку на uniform в шейдере
+        const scaleMatrixLocation = gl.getUniformLocation(shaderProgram, 'u_scaleMatrix');
+
+        // Передаем матрицу масштаба в шейдер
+        gl.uniformMatrix4fv(scaleMatrixLocation, false, scaleMatrix);
+
+        // Включаем атрибут
+        gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(positionAttribLocation);
+
+        // Отрисовываем треугольник
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+        // Завершаем работу с буфером
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        // Очистка ресурсов
+        gl.deleteProgram(shaderProgram);
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
+        gl.deleteBuffer(vertexBuffer);
+    </script>
+</body>
+
+</html>

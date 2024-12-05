@@ -1,3 +1,4 @@
 **/output/
 **/photos/
 **/__pycache__/
+*.obj

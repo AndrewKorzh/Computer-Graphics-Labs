@@ -1,9 +1,15 @@
-
 import math
 import tkinter as tk
 import numpy as np
 from tkinter import filedialog, messagebox
-from lab6 import Polyhedron3D,Camera,PolyhedronDrawer,get_progection_matrix,get_polyhedron,MainWindow
+from lab6 import (
+    Polyhedron3D,
+    Camera,
+    PolyhedronDrawer,
+    get_progection_matrix,
+    get_polyhedron,
+    MainWindow,
+)
 
 
 def load_from_obj(filepath):
@@ -15,17 +21,17 @@ def load_from_obj(filepath):
     faces = []
     edges = set()
 
-    with open(filepath, 'r') as file:
+    with open(filepath, "r") as file:
         for line in file:
             parts = line.strip().split()
             if not parts:
                 continue
-            if parts[0] == 'v':  # Вершина
+            if parts[0] == "v":  # Вершина
                 vertices.append(list(map(float, parts[1:4])))
-            elif parts[0] == 'f':  # Грань
-                face = [int(idx.split('/')[0]) - 1 for idx in parts[1:]]
+            elif parts[0] == "f":  # Грань
+                face = [int(idx.split("/")[0]) - 1 for idx in parts[1:]]
                 faces.append(face)
-            elif parts[0] == 'l':  # Ребро
+            elif parts[0] == "l":  # Ребро
                 edge = [int(idx) - 1 for idx in parts[1:]]
                 for i in range(len(edge) - 1):
                     edges.add((edge[i], edge[i + 1]))
@@ -38,13 +44,13 @@ def load_from_obj(filepath):
     return Polyhedron3D(vertices, list(edges))
 
 
-def save_to_obj(polyhedron,filepath):
+def save_to_obj(polyhedron, filepath):
     """
     Сохранение модели в формате OBJ (только вершины и рёбра).
 
     :param filepath: Путь к файлу для сохранения.
     """
-    with open(filepath, 'w') as file:
+    with open(filepath, "w") as file:
         # Записываем вершины
         for vertex in polyhedron.vertices:
             # Если вершина не содержит координаты Z, добавляем её как 0.0
@@ -74,34 +80,46 @@ class NewMainWindow(MainWindow):
         super().__init__(root)
         row_count = 11
 
-        tk.Button(root, text="Load OBJ File", command=self.load_obj).grid(row=row_count, column=3)
-        tk.Button(root, text="Save OBJ File", command=self.save_obj).grid(row=row_count, column=4)
+        tk.Button(root, text="Load OBJ File", command=self.load_obj).grid(
+            row=row_count, column=3
+        )
+        tk.Button(root, text="Save OBJ File", command=self.save_obj).grid(
+            row=row_count, column=4
+        )
 
         row_count += 1
 
-        tk.Label(self.root, text="Points (x, y, z):").grid(row=row_count, column=0, padx=5, pady=5)
+        tk.Label(self.root, text="Points (x, y, z):").grid(
+            row=row_count, column=0, padx=5, pady=5
+        )
         self.points_entry = tk.Entry(self.root, width=40)
         self.points_entry.grid(row=row_count, column=1, padx=5, pady=5)
 
         row_count += 1
 
         # Поле для оси
-        tk.Label(self.root, text="Axis of Rotation (x, y, z):").grid(row=row_count, column=0, padx=5, pady=5)
+        tk.Label(self.root, text="Axis of Rotation (x, y, z):").grid(
+            row=row_count, column=0, padx=5, pady=5
+        )
         self.axis_entry = tk.Entry(self.root, width=10)
         self.axis_entry.grid(row=row_count, column=1, padx=5, pady=5)
 
-        row_count += 1
+        # row_count += 1
 
         # Поле для количества сегментов
-        tk.Label(self.root, text="Number of Segments:").grid(row=row_count, column=0, padx=5, pady=5)
+        tk.Label(self.root, text="Number of Segments:").grid(
+            row=row_count, column=2, padx=5, pady=5
+        )
         self.segments_entry = tk.Entry(self.root, width=10)
-        self.segments_entry.grid(row=row_count, column=1, padx=5, pady=5)
+        self.segments_entry.grid(row=row_count, column=3, padx=5, pady=5)
 
-        row_count += 1
+        # row_count += 1
 
         # Кнопка для генерации вращённой фигуры
-        self.generate_button = tk.Button(self.root, text="Generate Revolved Shape", command=self.generate_shape)
-        self.generate_button.grid(row=row_count, column=0, columnspan=2, padx=5, pady=5)
+        self.generate_button = tk.Button(
+            self.root, text="Generate Revolved Shape", command=self.generate_shape
+        )
+        self.generate_button.grid(row=row_count, column=5, columnspan=2, padx=5, pady=5)
 
         row_count += 1
 
@@ -114,42 +132,65 @@ class NewMainWindow(MainWindow):
         self.functions = {
             "sin(sqrt(x^2 + y^2))": self.surface_sin,
             "x^2 - y^2": self.surface_parabola,
-            "cos(x) * sin(y)": self.surface_cos_sin
+            "cos(x) * sin(y)": self.surface_cos_sin,
         }
 
-        tk.Label(self.root, text="X0:").grid(row=row_count, column=0, padx=5, pady=5, sticky="w")
-        tk.Entry(self.root, textvariable=self.x0_var).grid(row=row_count, column=1, padx=5, pady=5)
+        tk.Label(self.root, text="X0:").grid(
+            row=row_count, column=0, padx=5, pady=5, sticky="w"
+        )
+        tk.Entry(self.root, textvariable=self.x0_var).grid(
+            row=row_count, column=1, padx=5, pady=5
+        )
 
-        tk.Label(self.root, text="X1:").grid(row=row_count, column=2, padx=5, pady=5, sticky="w")
-        tk.Entry(self.root, textvariable=self.x1_var).grid(row=row_count, column=3, padx=5, pady=5)
-
-        row_count += 1
-
-        tk.Label(self.root, text="Y0:").grid(row=row_count, column=0, padx=5, pady=5, sticky="w")
-        tk.Entry(self.root, textvariable=self.y0_var).grid(row=row_count, column=1, padx=5, pady=5)
-
-
-        tk.Label(self.root, text="Y1:").grid(row=row_count, column=2, padx=5, pady=5, sticky="w")
-        tk.Entry(self.root, textvariable=self.y1_var).grid(row=row_count, column=3, padx=5, pady=5)
-
-        row_count += 1
-
-        tk.Label(self.root, text="Разбиения:").grid(row=row_count, column=0, padx=5, pady=5, sticky="w")
-        tk.Entry(self.root, textvariable=self.num_segments_var).grid(row=row_count, column=1, padx=5, pady=5)
+        tk.Label(self.root, text="X1:").grid(
+            row=row_count, column=2, padx=5, pady=5, sticky="w"
+        )
+        tk.Entry(self.root, textvariable=self.x1_var).grid(
+            row=row_count, column=3, padx=5, pady=5
+        )
 
         row_count += 1
 
-        tk.Label(self.root, text="Функция:").grid(row=row_count, column=0, padx=5, pady=5, sticky="w")
-        tk.OptionMenu(self.root, self.function_var, *self.functions.keys()).grid(row=row_count, column=1, padx=5, pady=5)
+        tk.Label(self.root, text="Y0:").grid(
+            row=row_count, column=0, padx=5, pady=5, sticky="w"
+        )
+        tk.Entry(self.root, textvariable=self.y0_var).grid(
+            row=row_count, column=1, padx=5, pady=5
+        )
+
+        tk.Label(self.root, text="Y1:").grid(
+            row=row_count, column=2, padx=5, pady=5, sticky="w"
+        )
+        tk.Entry(self.root, textvariable=self.y1_var).grid(
+            row=row_count, column=3, padx=5, pady=5
+        )
 
         row_count += 1
+
+        tk.Label(self.root, text="Разбиения:").grid(
+            row=row_count, column=0, padx=5, pady=5, sticky="w"
+        )
+        tk.Entry(self.root, textvariable=self.num_segments_var).grid(
+            row=row_count, column=1, padx=5, pady=5
+        )
+
+        row_count += 1
+
+        tk.Label(self.root, text="Функция:").grid(
+            row=row_count, column=0, padx=5, pady=5, sticky="w"
+        )
+        tk.OptionMenu(self.root, self.function_var, *self.functions.keys()).grid(
+            row=row_count, column=1, padx=5, pady=5
+        )
+
+        # row_count += 1
 
         # Кнопка для построения поверхности
-        tk.Button(self.root, text="Построить поверхность", command=self.generate_surface).grid(row=row_count, column=0,
-                                                                                                columnspan=2, pady=10)
+        tk.Button(
+            self.root, text="Построить поверхность", command=self.generate_surface
+        ).grid(row=row_count, column=6, columnspan=2, pady=10)
 
         self.root.bind("<MouseWheel>", self.on_mouse_wheel)
-
 
     def load_obj(self):
         filepath = filedialog.askopenfilename(filetypes=[("OBJ Files", "*.obj")])
@@ -162,21 +203,25 @@ class NewMainWindow(MainWindow):
         if not self.polyhedron:
             messagebox.showerror("Error", "No polyhedron to save!")
             return
-        filepath = filedialog.asksaveasfilename(defaultextension=".obj", filetypes=[("OBJ Files", "*.obj")])
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".obj", filetypes=[("OBJ Files", "*.obj")]
+        )
         if filepath:
-            save_to_obj(self.polyhedron,filepath)
+            save_to_obj(self.polyhedron, filepath)
             messagebox.showinfo("Success", "OBJ file saved successfully!")
 
     def parse_points(self):
         """Парсит введённые пользователем точки."""
         try:
             points = [
-                list(map(float, point.split(',')))
-                for point in self.points_entry.get().strip().split(';')
+                list(map(float, point.split(",")))
+                for point in self.points_entry.get().strip().split(";")
             ]
             return points
         except ValueError:
-            messagebox.showerror("Invalid Input", "Points should be in the format: x,y,z;x,y,z")
+            messagebox.showerror(
+                "Invalid Input", "Points should be in the format: x,y,z;x,y,z"
+            )
             return None
 
     def generate_shape(self):
@@ -186,7 +231,7 @@ class NewMainWindow(MainWindow):
             return
 
         axis = self.axis_entry.get().strip().lower()
-        if axis not in ('x', 'y', 'z'):
+        if axis not in ("x", "y", "z"):
             messagebox.showerror("Invalid Axis", "Axis should be one of: x, y, z")
             return
 
@@ -195,13 +240,17 @@ class NewMainWindow(MainWindow):
             if num_segments <= 0:
                 raise ValueError
         except ValueError:
-            messagebox.showerror("Invalid Segments", "Number of segments should be a positive integer")
+            messagebox.showerror(
+                "Invalid Segments", "Number of segments should be a positive integer"
+            )
             return
 
         # Генерация вращённой фигуры
         self.polyhedron = self.generate_revolved_shape(points, axis, num_segments)
         self.redraw()
-        messagebox.showinfo("Success", f"Shape generated with {len(self.polyhedron.vertices)} vertices!")
+        messagebox.showinfo(
+            "Success", f"Shape generated with {len(self.polyhedron.vertices)} vertices!"
+        )
 
     def generate_revolved_shape(self, points, axis, num_segments):
         angle_step = 2 * math.pi / num_segments
@@ -210,24 +259,30 @@ class NewMainWindow(MainWindow):
 
         for i in range(num_segments):
             angle = i * angle_step
-            if axis == 'z':
-                rotation_matrix = np.array([
-                    [math.cos(angle), -math.sin(angle), 0],
-                    [math.sin(angle), math.cos(angle), 0],
-                    [0, 0, 1]
-                ])
-            elif axis == 'x':
-                rotation_matrix = np.array([
-                    [1, 0, 0],
-                    [0, math.cos(angle), -math.sin(angle)],
-                    [0, math.sin(angle), math.cos(angle)]
-                ])
-            elif axis == 'y':
-                rotation_matrix = np.array([
-                    [math.cos(angle), 0, math.sin(angle)],
-                    [0, 1, 0],
-                    [-math.sin(angle), 0, math.cos(angle)]
-                ])
+            if axis == "z":
+                rotation_matrix = np.array(
+                    [
+                        [math.cos(angle), -math.sin(angle), 0],
+                        [math.sin(angle), math.cos(angle), 0],
+                        [0, 0, 1],
+                    ]
+                )
+            elif axis == "x":
+                rotation_matrix = np.array(
+                    [
+                        [1, 0, 0],
+                        [0, math.cos(angle), -math.sin(angle)],
+                        [0, math.sin(angle), math.cos(angle)],
+                    ]
+                )
+            elif axis == "y":
+                rotation_matrix = np.array(
+                    [
+                        [math.cos(angle), 0, math.sin(angle)],
+                        [0, 1, 0],
+                        [-math.sin(angle), 0, math.cos(angle)],
+                    ]
+                )
             else:
                 rotation_matrix = np.eye(3)
 
@@ -237,12 +292,14 @@ class NewMainWindow(MainWindow):
 
             if i > 0:
                 for j in range(len(points) - 1):
-                    faces.append([
-                        i * len(points) + j,
-                        (i - 1) * len(points) + j,
-                        (i - 1) * len(points) + (j + 1),
-                        i * len(points) + (j + 1)
-                    ])
+                    faces.append(
+                        [
+                            i * len(points) + j,
+                            (i - 1) * len(points) + j,
+                            (i - 1) * len(points) + (j + 1),
+                            i * len(points) + (j + 1),
+                        ]
+                    )
 
         # Рассчитываем рёбра
         edges = set()
@@ -260,10 +317,10 @@ class NewMainWindow(MainWindow):
         func = self.functions[self.function_var.get()]
 
         # Генерация поверхности
-        self.polyhedron = self.generate_surface_mesh(x0, x1, y0, y1, num_segments, num_segments, func)
+        self.polyhedron = self.generate_surface_mesh(
+            x0, x1, y0, y1, num_segments, num_segments, func
+        )
         self.redraw()
-
-
 
     def generate_surface_mesh(self, x0, x1, y0, y1, nx, ny, func):
         """Генерация сетки поверхности."""
@@ -304,15 +361,16 @@ class NewMainWindow(MainWindow):
 
     def surface_sin(self, x, y):
         """Функция sin(sqrt(x^2 + y^2))."""
-        return math.sin(math.sqrt(x ** 2 + y ** 2))
+        return math.sin(math.sqrt(x**2 + y**2))
 
     def surface_parabola(self, x, y):
         """Функция x^2 - y^2."""
-        return x ** 2 - y ** 2
+        return x**2 - y**2
 
     def surface_cos_sin(self, x, y):
         """Функция cos(x) * sin(y)."""
         return math.cos(x) * math.sin(y)
+
 
 if __name__ == "__main__":
     root = tk.Tk()
