@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выбор фигуры и закрашивания на WebGL</title>
+    <style>
+        body {
+            display: flex;
+            margin: 0;
+            height: 100vh;
+        }
+
+        canvas {
+            flex: 3;
+            display: block;
+            border-right: 1px solid #ccc;
+        }
+
+        #controls {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            font-family: Arial, sans-serif;
+        }
+
+        label,
+        select {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="webglCanvas"></canvas>
+    <div id="controls">
+        <label for="shapeSelect">Выберите фигуру:</label>
+        <select id="shapeSelect">
+            <option value="rectangle">Четырехугольник</option>
+            <option value="fan">Веер</option>
+            <option value="pentagon">Пятиугольник</option>
+        </select>
+
+        <label for="fillTypeSelect">Выберите тип закрашивания:</label>
+        <select id="fillTypeSelect">
+            <option value="flatConstant">Плоское (константа)</option>
+            <option value="flatUniform">Плоское (uniform)</option>
+            <option value="gradient">Градиентное</option>
+        </select>
+
+        <button id="drawButton">Нарисовать</button>
+    </div>
+
+    <script>
+        // Инициализация WebGL
+        const canvas = document.getElementById('webglCanvas');
+        const gl = canvas.getContext('webgl');
+
+        if (!gl) {
+            alert("WebGL не поддерживается вашим браузером!");
+        }
+
+        canvas.width = window.innerWidth * 0.75; // 75% для canvas
+        canvas.height = window.innerHeight;
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+
+        // Данные для фигур
+        const shapes = {
+            rectangle: [
+                -0.5, -0.5, 0.5, -0.5, 0.5, 0.5,
+                -0.5, -0.5, 0.5, 0.5, -0.5, 0.5
+            ],
+            fan: [
+                0.0, 0.0, -0.5, -0.5, 0.5, -0.5,
+                0.0, 0.0, 0.5, -0.5, 0.5, 0.5,
+                0.0, 0.0, 0.5, 0.5, -0.5, 0.5,
+                0.0, 0.0, -0.5, 0.5, -0.5, -0.5
+            ],
+            pentagon: [
+                0.0, 0.5, -0.5, 0.2, -0.3, -0.4,
+                0.0, 0.5, -0.3, -0.4, 0.3, -0.4,
+                0.0, 0.5, 0.3, -0.4, 0.5, 0.2
+            ]
+        };
+
+        // Шейдеры
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            attribute vec4 a_color;
+            varying vec4 v_color;
+            uniform vec4 u_color; 
+            void main() {
+                gl_Position = vec4(a_position, 0.0, 1.0);
+                v_color = a_color; 
+            }
+        `;
+
+        const fragmentShaderSourceFlatConstant = `
+            precision mediump float;
+            void main() {
+                gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); // Константный цвет
+            }
+        `;
+
+        const fragmentShaderSourceFlatUniform = `
+            precision mediump float;
+            uniform vec4 u_color;
+            void main() {
+                gl_FragColor = u_color; // Цвет из uniform
+            }
+        `;
+
+        const fragmentShaderSourceGradient = `
+            precision mediump float;
+            varying vec4 v_color;
+            void main() {
+                gl_FragColor = v_color; // Цвет из атрибута
+            }
+        `;
+
+        // Функция создания шейдера
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        // Функция создания программы
+        function createProgram(gl, vertexShader, fragmentShader) {
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error(gl.getProgramInfoLog(program));
+                gl.deleteProgram(program);
+                return null;
+            }
+            return program;
+        }
+
+        // Основная функция отрисовки
+        function draw(shape, fillType) {
+            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+            let fragmentShader;
+
+            // Выбираем фрагментный шейдер
+            if (fillType === 'flatConstant') {
+                fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSourceFlatConstant);
+            } else if (fillType === 'flatUniform') {
+                fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSourceFlatUniform);
+            } else if (fillType === 'gradient') {
+                fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSourceGradient);
+            }
+
+            const program = createProgram(gl, vertexShader, fragmentShader);
+            gl.useProgram(program);
+
+            // Создание буфера вершин
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(shapes[shape]), gl.STATIC_DRAW);
+
+            // Привязка атрибутов
+            const positionLocation = gl.getAttribLocation(program, 'a_position');
+            gl.enableVertexAttribArray(positionLocation);
+            gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+            // Отрисовка
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLES, 0, shapes[shape].length / 2);
+        }
+
+        // Обработчик кнопки
+        document.getElementById('drawButton').addEventListener('click', () => {
+            const shape = document.getElementById('shapeSelect').value;
+            const fillType = document.getElementById('fillTypeSelect').value;
+            draw(shape, fillType);
+        });
+
+        // Начальная отрисовка
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+    </script>
+</body>
+
+</html>
