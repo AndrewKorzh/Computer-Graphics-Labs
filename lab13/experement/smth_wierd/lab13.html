@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Солнечная система</title>
+    <style>
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: black;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="glCanvas" width="800" height="600"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+    <script>
+
+
+        const vertexShaderSource = `
+      attribute vec3 aVertexPosition;
+      attribute vec2 aTextureCoord;
+
+      uniform mat4 uModelViewMatrix;
+      uniform mat4 uProjectionMatrix;
+
+      varying highp vec2 vTextureCoord;
+
+      void main(void) {
+        gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertexPosition, 1.0);
+        vTextureCoord = aTextureCoord;
+      }
+    `;
+
+        const fragmentShaderSource = `
+      varying highp vec2 vTextureCoord;
+      uniform sampler2D uSampler;
+
+      void main(void) {
+        gl_FragColor = texture2D(uSampler, vTextureCoord);
+      }
+    `;
+
+        function initShaderProgram(gl, vsSource, fsSource) {
+            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+            const shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                console.error('Unable to initialize the shader program:', gl.getProgramInfoLog(shaderProgram));
+                return null;
+            }
+            return shaderProgram;
+        }
+
+        function loadShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('An error occurred compiling the shaders:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function parseOBJ(text) {
+            const vertices = [];
+            const textureCoords = [];
+            const vertexIndices = [];
+            const texcoordIndices = [];
+
+            const lines = text.split('\n');
+            for (const line of lines) {
+                const parts = line.trim().split(/\s+/);
+                if (parts[0] === 'v') {
+                    vertices.push(...parts.slice(1).map(Number));  // Добавляем вершины
+                } else if (parts[0] === 'vt') {
+                    textureCoords.push(...parts.slice(1).map(Number));  // Добавляем текстурные координаты
+                } else if (parts[0] === 'f') {
+                    // Обработка индексов вершин и текстур
+                    // В случае многоугольников с несколькими вершинами, разбиваем их на треугольники
+                    const faceIndices = parts.slice(1).map((face) => face.split('/').map(Number));
+                    // Добавление индексов в массивы
+                    for (let i = 1; i < faceIndices.length - 1; i++) {
+                        vertexIndices.push(faceIndices[0][0] - 1, faceIndices[i][0] - 1, faceIndices[i + 1][0] - 1);  // Вершины
+                        texcoordIndices.push(faceIndices[0][1] - 1, faceIndices[i][1] - 1, faceIndices[i + 1][1] - 1);  // Текстурные координаты
+                    }
+                }
+            }
+
+            const finalVertices = [];
+            const finalTexcoords = [];
+
+            // Для каждой вершины и текстуры заполняем финальные массивы
+            for (let i = 0; i < vertexIndices.length; i++) {
+                const vi = vertexIndices[i];
+                const ti = texcoordIndices[i];
+
+                finalVertices.push(vertices[vi * 3], vertices[vi * 3 + 1], vertices[vi * 3 + 2]);
+                finalTexcoords.push(textureCoords[ti * 2], 1.0 - textureCoords[ti * 2 + 1]); // Переворачиваем Y-координату
+            }
+
+            return { vertices: finalVertices, textureCoords: finalTexcoords };
+        }
+
+
+        function loadObjFile(url) {
+            return fetch(url)
+                .then((response) => response.text())
+                .then((text) => parseOBJ(text));
+        }
+
+        function loadTexture(gl, url) {
+            const texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+
+            const pixel = new Uint8Array([255, 255, 255, 255]); // Заглушка белого цвета
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+
+            const image = new Image();
+            image.onload = () => {
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+                gl.generateMipmap(gl.TEXTURE_2D);
+            };
+            image.src = url;
+
+            return texture;
+        }
+
+        async function main() {
+            const canvas = document.getElementById('glCanvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) {
+                alert('WebGL not supported');
+                return;
+            }
+
+            const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
+            const programInfo = {
+                program: shaderProgram,
+                attribLocations: {
+                    vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+                    textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+                },
+                uniformLocations: {
+                    projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+                    modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+                    sampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+                },
+            };
+
+            const modelsAndTextures = {
+                "STEVE": {
+                    "obj": "./models/steve.obj",
+                    "texture": "./textures/steve.png"
+                },
+                "CUBE": {
+                    "obj": "./models/cube.obj",
+                    "texture": "./textures/wood.jpg"
+                },
+                "ELFTOWER": {
+                    "obj": "./models/elf_tower.obj",
+                    "texture": "./textures/wood.jpg"
+                }
+            }
+
+            const model = modelsAndTextures["ELFTOWER"]
+
+            const objModel = await loadObjFile(model["obj"]); // Укажите путь к вашему .obj
+            const texture = loadTexture(gl, model["texture"]); // Укажите путь к текстуре
+
+            const buffers = initBuffers(gl, objModel);
+
+            const projectionMatrix = mat4.create();
+            mat4.perspective(projectionMatrix, (45 * Math.PI) / 180, canvas.width / canvas.height, 0.1, 100.0);
+
+            const planets = createPlanets();
+
+            function render(now) {
+                now *= 0.001;
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+                // Установить положение камеры
+                const globalViewMatrix = mat4.create();
+                mat4.translate(globalViewMatrix, globalViewMatrix, [0, -5, -10]); // Камера удалена на 10 единиц
+
+                planets.forEach((planet) => {
+                    const modelViewMatrix = mat4.create();
+                    mat4.translate(modelViewMatrix, modelViewMatrix, planet.position);
+                    mat4.rotate(modelViewMatrix, modelViewMatrix, now * planet.rotationSpeed, [0, 1, 0]);
+
+                    const combinedMatrix = mat4.create();
+                    mat4.multiply(combinedMatrix, globalViewMatrix, modelViewMatrix); // Учитываем положение камеры
+
+                    gl.useProgram(programInfo.program);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertexBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, texture);
+                    gl.uniform1i(programInfo.uniformLocations.sampler, 0);
+
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, combinedMatrix);
+
+                    gl.drawArrays(gl.TRIANGLES, 0, buffers.vertexCount);
+                });
+
+                requestAnimationFrame(render);
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        function initBuffers(gl, model) {
+            const vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.vertices), gl.STATIC_DRAW);
+
+            const textureBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.textureCoords), gl.STATIC_DRAW);
+
+            return {
+                vertexBuffer,
+                textureBuffer,
+                vertexCount: model.vertices.length / 3,
+            };
+        }
+
+        function createPlanets() {
+            return [
+                { position: [0, 0, -6], rotationSpeed: 0.3 },
+                { position: [2, 5, -10], rotationSpeed: 1.4 },
+                { position: [-4, 0, -6], rotationSpeed: 10.0 },
+                // { position: [0, 2, -6], rotationSpeed: 0.02 },
+                // { position: [0, -2, -6], rotationSpeed: 0.025 },
+            ];
+        }
+
+        main();
+    </script>
+</body>
+
+</html>

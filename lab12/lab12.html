@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL: Градиентные фигуры</title>
+    <style>
+        body {
+            display: flex;
+            margin: 0;
+            height: 100vh;
+        }
+
+        canvas {
+            flex: 3;
+            display: block;
+            border-right: 1px solid #ccc;
+        }
+
+        #controls {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+        }
+
+        label,
+        select {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="webglCanvas"></canvas>
+    <div id="controls">
+        <label for="shapeSelect">Выберите фигуру:</label>
+        <select id="shapeSelect">
+            <option value="gradientCube">Градиентный куб</option>
+            <option value="gradientCircle">Градиентный круг</option>
+        </select>
+        <button id="drawButton">Нарисовать</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('webglCanvas');
+        const gl = canvas.getContext('webgl');
+
+        if (!gl) {
+            alert("WebGL не поддерживается вашим браузером!");
+        }
+
+        canvas.width = window.innerWidth * 0.75;
+        canvas.height = window.innerHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+
+        // Создание шейдера
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        // Создание программы
+        function createProgram(gl, vertexShader, fragmentShader) {
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error(gl.getProgramInfoLog(program));
+                gl.deleteProgram(program);
+                return null;
+            }
+            return program;
+        }
+
+        const vertexShaderSource = `
+            attribute vec4 a_position;
+            attribute vec3 a_color;
+            varying vec3 v_color;
+            void main() {
+                gl_Position = a_position;
+                v_color = a_color;
+            }
+        `;
+
+        const fragmentShaderSource = `
+            precision mediump float;
+            varying vec3 v_color;
+            void main() {
+                gl_FragColor = vec4(v_color, 1.0);
+            }
+        `;
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+        const program = createProgram(gl, vertexShader, fragmentShader);
+
+        // Градиентный куб
+        function drawGradientCube() {
+            const vertices = [
+                // Позиции        // Цвета
+                -0.5, -0.5, 0, 1, 0, 0,  // Нижний левый (красный)
+                0.5, -0.5, 0, 0, 1, 0,   // Нижний правый (зелёный)
+                0.5, 0.5, 0, 0, 0, 1,    // Верхний правый (синий)
+                -0.5, 0.5, 0, 1, 1, 0    // Верхний левый (жёлтый)
+            ];
+
+            const indices = [
+                0, 1, 2,
+                2, 3, 0
+            ];
+
+            gl.useProgram(program);
+
+            const vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            const indexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+            const positionLocation = gl.getAttribLocation(program, 'a_position');
+            const colorLocation = gl.getAttribLocation(program, 'a_color');
+
+            gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 24, 0);
+            gl.enableVertexAttribArray(positionLocation);
+
+            gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 24, 12);
+            gl.enableVertexAttribArray(colorLocation);
+
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+        }
+
+        // Градиентный круг
+        function drawGradientCircle() {
+            const segments = 100;
+            const vertices = [0, 0, 0, 1, 0, 0]; // Центр круга (красный)
+            const angleStep = (2 * Math.PI) / segments;
+
+            for (let i = 0; i <= segments; i++) {
+                const angle = i * angleStep;
+                const x = Math.cos(angle) * 0.5;
+                const y = Math.sin(angle) * 0.5;
+                const color = [x + 0.5, y + 0.5, 1.0]; // Градиентный цвет
+                vertices.push(x, y, 0, ...color);
+            }
+
+            const indices = [];
+            for (let i = 1; i <= segments; i++) {
+                indices.push(0, i, i + 1);
+            }
+
+            gl.useProgram(program);
+
+            const vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            const indexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+            const positionLocation = gl.getAttribLocation(program, 'a_position');
+            const colorLocation = gl.getAttribLocation(program, 'a_color');
+
+            gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 24, 0);
+            gl.enableVertexAttribArray(positionLocation);
+
+            gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 24, 12);
+            gl.enableVertexAttribArray(colorLocation);
+
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+        }
+
+        // Обработчик событий
+        function draw() {
+            const shape = document.getElementById('shapeSelect').value;
+            if (shape === 'gradientCube') {
+                drawGradientCube();
+            } else if (shape === 'gradientCircle') {
+                drawGradientCircle();
+            }
+        }
+
+        document.getElementById('drawButton').addEventListener('click', draw);
+    </script>
+</body>
+
+</html>
