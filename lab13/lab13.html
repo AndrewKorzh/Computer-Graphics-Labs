@@ -171,10 +171,11 @@
                 "ELFTOWER": {
                     "obj": "./models/elf_tower.obj",
                     "texture": "./textures/wood.jpg"
-                }
+                },
+
             }
 
-            const model = modelsAndTextures["ELFTOWER"]
+            const model = modelsAndTextures["CUBE"]
 
             const objModel = await loadObjFile(model["obj"]); // Укажите путь к вашему .obj
             const texture = loadTexture(gl, model["texture"]); // Укажите путь к текстуре
