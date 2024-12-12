@@ -209,7 +209,7 @@
 
                 // Установить положение камеры
                 const globalViewMatrix = mat4.create();
-                mat4.translate(globalViewMatrix, globalViewMatrix, cameraPosition); // Камера удалена на 10 единиц   [0, -5, -10]
+                mat4.translate(globalViewMatrix, globalViewMatrix, cameraPosition); // Камера удалена на 10 единиц // [0, -5, -10]
 
                 planets.forEach((planet) => {
                     const modelViewMatrix = mat4.create();
