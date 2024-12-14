@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Shapes</title>
+    <style>
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: black;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="glCanvas" width="800" height="600"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+    <script>
+        // Vertex shader for gradient tetrahedron
+        const vertexShaderSource = `
+        attribute vec3 aVertexPosition;
+        attribute vec3 aVertexColor;
+
+        uniform mat4 uModelViewMatrix;
+        uniform mat4 uProjectionMatrix;
+
+        varying lowp vec3 vColor;
+
+        void main(void) {
+            gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertexPosition, 1.0);
+            vColor = aVertexColor;
+        }
+        `;
+
+        // Fragment shader for gradient tetrahedron
+        const fragmentShaderSource = `
+        varying lowp vec3 vColor;
+
+        void main(void) {
+            gl_FragColor = vec4(vColor, 1.0);
+        }
+        `;
+
+        function initShaderProgram(gl, vsSource, fsSource) {
+            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+            const shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                console.error('Unable to initialize the shader program:', gl.getProgramInfoLog(shaderProgram));
+                return null;
+            }
+            return shaderProgram;
+        }
+
+        function loadShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('An error occurred compiling the shaders:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function initBuffers(gl) {
+            const vertices = [
+                // Vertex positions for a tetrahedron
+                0.0, 1.0, 0.0,
+                -1.0, -1.0, 1.0,
+                1.0, -1.0, 1.0,
+
+                0.0, 1.0, 0.0,
+                1.0, -1.0, 1.0,
+                0.0, -1.0, -1.0,
+
+                0.0, 1.0, 0.0,
+                0.0, -1.0, -1.0,
+                -1.0, -1.0, 1.0,
+
+                -1.0, -1.0, 1.0,
+                1.0, -1.0, 1.0,
+                0.0, -1.0, -1.0
+            ];
+
+            const colors = [
+                // Vertex colors (gradient effect)
+                1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0,
+
+                1.0, 0.0, 0.0,
+                0.0, 0.0, 1.0,
+                1.0, 1.0, 0.0,
+
+                1.0, 0.0, 0.0,
+                1.0, 1.0, 0.0,
+                0.0, 1.0, 0.0,
+
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0,
+                1.0, 1.0, 0.0
+            ];
+
+            const vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            const colorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+            return {
+                vertexBuffer,
+                colorBuffer,
+                vertexCount: vertices.length / 3,
+            };
+        }
+
+        function main() {
+            const canvas = document.getElementById('glCanvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) {
+                alert('WebGL not supported');
+                return;
+            }
+
+            const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
+            const programInfo = {
+                program: shaderProgram,
+                attribLocations: {
+                    vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+                    vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
+                },
+                uniformLocations: {
+                    projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+                    modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+                },
+            };
+
+            const buffers = initBuffers(gl);
+
+            const projectionMatrix = mat4.create();
+            mat4.perspective(projectionMatrix, (45 * Math.PI) / 180, canvas.width / canvas.height, 0.1, 100.0);
+
+            const modelViewMatrix = mat4.create();
+            let position = [0, 0, -6];
+
+            function render() {
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+                mat4.identity(modelViewMatrix);
+                mat4.translate(modelViewMatrix, modelViewMatrix, position);
+                mat4.rotate(modelViewMatrix, modelViewMatrix, Math.PI / 4, [1, 1, 0]);
+
+                gl.useProgram(programInfo.program);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertexBuffer);
+                gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.colorBuffer);
+                gl.vertexAttribPointer(programInfo.attribLocations.vertexColor, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
+
+                gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+                gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
+
+                gl.drawArrays(gl.TRIANGLES, 0, buffers.vertexCount);
+
+                requestAnimationFrame(render);
+            }
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'ArrowUp') position[1] += 0.1;
+                if (event.key === 'ArrowDown') position[1] -= 0.1;
+                if (event.key === 'ArrowLeft') position[0] -= 0.1;
+                if (event.key === 'ArrowRight') position[0] += 0.1;
+                if (event.key === 'w') position[2] += 0.1;
+                if (event.key === 's') position[2] -= 0.1;
+            });
+
+            render();
+        }
+
+        main();
+    </script>
+</body>
+
+</html>

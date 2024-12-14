@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL Task Selector</title>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #task-container {
+            flex: 0 0 75%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+
+        #task-selector {
+            flex: 0 0 25%;
+            background-color: #333;
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #task-selector button {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #555;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+
+        #task-selector button:hover {
+            background-color: #777;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="task-selector">
+        <button onclick="loadTask('gradientTetrahedron')">Градиентный тетраэдр</button>
+        <button onclick="loadTask('texturedCube')">Кубик с текстурой</button>
+        <button onclick="loadTask('mixedTexturesCube')">Кубик с двумя текстурами</button>
+        <button onclick="loadTask('gradientCircle')">Градиентный круг</button>
+    </div>
+    <div id="task-container">
+        <canvas id="webgl-canvas" width="800" height="600"></canvas>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.4.0/gl-matrix.js"></script>
+
+
+    <script src="task1.js"></script>
+    <script src="task2.js"></script>
+    <script src="task3.js"></script>
+    <script src="task4.js"></script>
+    <script>
+        let currentTask = null;
+
+        function loadTask(task) {
+            if (currentTask) {
+                currentTask.cleanup();
+            }
+            if (task === "gradientTetrahedron") {
+                currentTask = gradientTetrahedron;
+            }
+            if (task === "texturedCube") {
+                currentTask = texturedCube;
+            }
+            if (task === "mixedTexturesCube") {
+                currentTask = mixedTexturesCube;
+            }
+            if (task === "gradientCircle") {
+                currentTask = gradientCircle;
+            }
+
+
+            currentTask.setup();
+        }
+
+        // window.onload = () => {
+        //     loadTask('gradientTetrahedron'); // Default task
+        // };
+    </script>
+</body>
+
+</html>
