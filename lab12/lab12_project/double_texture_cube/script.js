@@ -25,18 +25,20 @@ const vertexShaderSource = `
 const fragmentShaderSource = `
     precision mediump float;
     uniform vec4 color;
-    uniform sampler2D textureSampler;
+    uniform sampler2D textureSampler1;
+    uniform sampler2D textureSampler2;
     uniform float mixRatio;
     varying vec2 vTexCoord;
     varying vec3 vColor;
     void main() {
-        vec4 textureColor = texture2D(textureSampler, vTexCoord);
+        vec4 textureColor1 = texture2D(textureSampler1, vTexCoord);
+        vec4 textureColor2 = texture2D(textureSampler2, vTexCoord);
         vec4 vertexColor = vec4(vColor, 1.0);
-        gl_FragColor = mix(vertexColor, textureColor, mixRatio);
+        gl_FragColor = mix(textureColor1, textureColor2, mixRatio);
     }
 `;
 
-// Compile shader
+// Compile shader function
 function compileShader(type, source) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
@@ -67,53 +69,54 @@ const texCoordLoc = gl.getAttribLocation(program, "texCoord");
 const colorLoc = gl.getUniformLocation(program, "color");
 const vertexColorLoc = gl.getAttribLocation(program, "vertexColor");
 const MVPLoc = gl.getUniformLocation(program, "MVP");
-const textureSamplerLoc = gl.getUniformLocation(program, "textureSampler");
+const textureSamplerLoc1 = gl.getUniformLocation(program, "textureSampler1");
+const textureSamplerLoc2 = gl.getUniformLocation(program, "textureSampler2");
 const mixRatioLoc = gl.getUniformLocation(program, "mixRatio");
 
-// Куб: координаты вершин и текстурные координаты
+// Cube: vertices and texture coordinates
 const vertices = new Float32Array([
-    // Координаты (x, y, z)            // Текстурные координаты (u, v)        // Цвета (r, g, b)
-    // Передняя грань
+    // Coordinates (x, y, z)            // Texture coordinates (u, v)        // Colors (r, g, b)
+    // Front face
     -0.5, -0.5, 0.5, 0.0, 0.0, 1.0, 0.0, 0.0,
     0.5, -0.5, 0.5, 1.0, 0.0, 1.0, 1.0, 0.0,
     0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
     -0.5, 0.5, 0.5, 0.0, 1.0, 1.0, 1.0, 1.0,
-    // Задняя грань
+    // Back face
     -0.5, -0.5, -0.5, 0.0, 0.0, 0.0, 1.0, 0.0,
     0.5, -0.5, -0.5, 1.0, 0.0, 0.0, 0.0, 1.0,
     0.5, 0.5, -0.5, 1.0, 1.0, 0.0, 1.0, 0.0,
     -0.5, 0.5, -0.5, 0.0, 1.0, 0.0, 0.0, 0.0,
-    // Левая грань
+    // Left face
     -0.5, -0.5, -0.5, 0.0, 0.0, 1.0, 1.0, 0.0,
     -0.5, -0.5, 0.5, 1.0, 0.0, 1.0, 0.0, 0.0,
     -0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
     -0.5, 0.5, -0.5, 0.0, 1.0, 1.0, 0.0, 1.0,
-    // Правая грань
+    // Right face
     0.5, -0.5, -0.5, 0.0, 0.0, 0.0, 1.0, 1.0,
     0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0,
     0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
     0.5, 0.5, -0.5, 0.0, 1.0, 0.0, 1.0, 0.0,
-    // Верхняя грань
+    // Top face
     -0.5, 0.5, -0.5, 0.0, 0.0, 0.0, 0.0, 0.0,
     0.5, 0.5, -0.5, 1.0, 0.0, 1.0, 0.0, 1.0,
     0.5, 0.5, 0.5, 1.0, 1.0, 0.0, 1.0, 0.0,
     -0.5, 0.5, 0.5, 0.0, 1.0, 1.0, 0.0, 1.0,
-    // Нижняя грань
+    // Bottom face
     -0.5, -0.5, -0.5, 0.0, 0.0, 1.0, 1.0, 1.0,
     0.5, -0.5, -0.5, 1.0, 0.0, 1.0, 0.0, 1.0,
     0.5, -0.5, 0.5, 1.0, 1.0, 0.0, 0.0, 0.0,
     -0.5, -0.5, 0.5, 0.0, 1.0, 0.0, 1.0, 0.0
 ]);
 
-// Обновленный массив индексов для правильных граней куба
 const indices = new Uint16Array([
-    0, 1, 2, 2, 3, 0,  // Передняя грань
-    4, 5, 6, 6, 7, 4,  // Задняя грань
-    8, 9, 10, 10, 11, 8, // Левая грань
-    12, 13, 14, 14, 15, 12, // Правая грань
-    16, 17, 18, 18, 19, 16, // Верхняя грань
-    20, 21, 22, 22, 23, 20  // Нижняя грань
+    0, 1, 2, 2, 3, 0,  // Front face
+    4, 5, 6, 6, 7, 4,  // Back face
+    8, 9, 10, 10, 11, 8, // Left face
+    12, 13, 14, 14, 15, 12, // Right face
+    16, 17, 18, 18, 19, 16, // Top face
+    20, 21, 22, 22, 23, 20  // Bottom face
 ]);
+
 // Create and bind buffers
 const vertexBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -134,13 +137,22 @@ gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 32, 12);
 gl.enableVertexAttribArray(vertexColorLoc);
 gl.vertexAttribPointer(vertexColorLoc, 3, gl.FLOAT, false, 32, 20);
 
-// Load texture
-const texture = gl.createTexture();
-const image = new Image();
-image.src = "textures/forest.jpg"; // Замените на путь к текстуре
-image.onload = () => {
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+// Load textures
+const texture1 = gl.createTexture();
+const image1 = new Image();
+image1.src = "textures/forest.jpg"; // First texture
+image1.onload = () => {
+    gl.bindTexture(gl.TEXTURE_2D, texture1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image1);
+    gl.generateMipmap(gl.TEXTURE_2D);
+};
+
+const texture2 = gl.createTexture();
+const image2 = new Image();
+image2.src = "textures/max.jpg"; // Second texture
+image2.onload = () => {
+    gl.bindTexture(gl.TEXTURE_2D, texture2);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image2);
     gl.generateMipmap(gl.TEXTURE_2D);
 };
 
@@ -171,9 +183,9 @@ function createMVPMatrix(angleX, angleY, angleZ, scaleX, scaleY, scaleZ) {
 // Animation parameters
 let angleX = 0, angleY = 0, angleZ = 0;
 let scaleX = 1, scaleY = 1, scaleZ = 1;
-let mixRatio = 0.5; // Initial texture-to-color ratio
+let mixRatio = 0.5; // Initial texture-to-texture ratio
 
-// Speed of rotation, scaling, and mixing
+// Speed of rotation and mixing
 const rotationSpeed = 2;
 const mixSpeed = 0.01;
 
@@ -208,9 +220,14 @@ function render() {
     gl.uniform4f(colorLoc, 0.4, 0.0, 0.3, 1.0);
     gl.uniform1f(mixRatioLoc, mixRatio);
 
+    // Set texture samplers
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.uniform1i(textureSamplerLoc, 0);
+    gl.bindTexture(gl.TEXTURE_2D, texture1);
+    gl.uniform1i(textureSamplerLoc1, 0);
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, texture2);
+    gl.uniform1i(textureSamplerLoc2, 1);
 
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
     requestAnimationFrame(render);
