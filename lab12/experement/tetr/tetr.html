@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Градиентный тетраэдр</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.4.0/gl-matrix.js"></script>
+    <!-- Подключение библиотеки gl-matrix -->
+    <style>
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border: 1px solid black;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="500" height="500"></canvas>
+    <div style="text-align: center; margin-top: 10px;">
+        <button onclick="move(0.1, 0, 0)">Вправо</button>
+        <button onclick="move(-0.1, 0, 0)">Влево</button>
+        <button onclick="move(0, 0.1, 0)">Вверх</button>
+        <button onclick="move(0, -0.1, 0)">Вниз</button>
+        <button onclick="move(0, 0, 0.1)">Вперед</button>
+        <button onclick="move(0, 0, -0.1)">Назад</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const gl = canvas.getContext('webgl2');
+
+        if (!gl) {
+            alert('WebGL не поддерживается');
+            throw new Error('WebGL not supported');
+        }
+
+        // Вершины тетраэдра
+        const vertices = [
+            0.0, 1.0, 0.0,  // вершина 0
+            -1.0, -1.0, 1.0, // вершина 1
+            1.0, -1.0, 1.0,  // вершина 2
+            0.0, -1.0, -1.0  // вершина 3
+        ];
+
+        // Индексы для граней
+        const indices = [
+            0, 1, 2,
+            0, 2, 3,
+            0, 3, 1,
+            1, 2, 3
+        ];
+
+        // Цвета для граней
+        const colors = [
+            1.0, 0.0, 0.0, 1.0, // красный
+            0.0, 1.0, 0.0, 1.0, // зелёный
+            0.0, 0.0, 1.0, 1.0, // синий
+            1.0, 1.0, 0.0, 1.0  // жёлтый
+        ];
+
+        // Вершинный шейдер
+        const vertexShaderSource = `
+        attribute vec3 a_position;
+        attribute vec4 a_color;
+        varying vec4 v_color;
+        uniform mat4 u_modelViewProjection;
+
+        void main() {
+            gl_Position = u_modelViewProjection * vec4(a_position, 1.0);
+            v_color = a_color;
+        }
+        `;
+
+        // Фрагментный шейдер
+        const fragmentShaderSource = `
+        precision mediump float;
+        varying vec4 v_color;
+
+        void main() {
+            gl_FragColor = v_color;
+        }
+        `;
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                throw new Error('Ошибка компиляции шейдера');
+            }
+            return shader;
+        }
+
+        function createProgram(gl, vertexShader, fragmentShader) {
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error(gl.getProgramInfoLog(program));
+                gl.deleteProgram(program);
+                throw new Error('Ошибка линковки программы');
+            }
+            return program;
+        }
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+        const program = createProgram(gl, vertexShader, fragmentShader);
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+        const colorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+        const indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);  // Убедитесь, что буфер индексов привязан
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+        const vao = gl.createVertexArray();
+        gl.bindVertexArray(vao);
+
+        const positionLocation = gl.getAttribLocation(program, 'a_position');
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+
+        const colorLocation = gl.getAttribLocation(program, 'a_color');
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.enableVertexAttribArray(colorLocation);
+        gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
+
+        const mvpLocation = gl.getUniformLocation(program, 'u_modelViewProjection');
+
+        let translation = [0.0, 0.0, 0.0];
+        let rotationX = 0.0;
+        let rotationY = 0.0;
+
+        function move(dx, dy, dz) {
+            translation[0] += dx;
+            translation[1] += dy;
+            translation[2] += dz;
+            render();
+        }
+
+        function updateUniforms() {
+            const projectionMatrix = mat4.create();
+            mat4.perspective(projectionMatrix, Math.PI / 4, canvas.width / canvas.height, 0.1, 100);
+
+            const modelMatrix = mat4.create();
+            mat4.translate(modelMatrix, modelMatrix, translation);
+            mat4.rotateX(modelMatrix, modelMatrix, rotationX);
+            mat4.rotateY(modelMatrix, modelMatrix, rotationY);
+
+            const mvpMatrix = mat4.create();
+            mat4.multiply(mvpMatrix, projectionMatrix, modelMatrix);
+
+            gl.uniformMatrix4fv(mvpLocation, false, mvpMatrix);
+        }
+
+        function render() {
+            gl.clearColor(0, 0, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            gl.useProgram(program);
+            gl.bindVertexArray(vao);
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);  // Привязка буфера индексов
+
+            updateUniforms();
+
+            gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+        }
+
+        // Обработка событий клавиатуры
+        window.addEventListener('keydown', (e) => {
+            const step = 0.1;
+            if (e.key === 'ArrowUp') move(0, step, 0);
+            if (e.key === 'ArrowDown') move(0, -step, 0);
+            if (e.key === 'ArrowLeft') move(-step, 0, 0);
+            if (e.key === 'ArrowRight') move(step, 0, 0);
+            if (e.key === 'w') move(0, 0, step);
+            if (e.key === 's') move(0, 0, -step);
+            render();
+        });
+
+        render();
+    </script>
+</body>
+
+</html>
