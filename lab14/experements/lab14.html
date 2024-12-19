@@ -6,52 +6,101 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Освещение и Сцена</title>
     <style>
+        /* Общие стили для body */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            flex-direction: row;
+            /* Используем row, чтобы элементы располагались в ряд */
+            color: #fff;
+        }
+
+        /* Стили для канваса */
         canvas {
             display: block;
-            margin: 0 auto;
             background: black;
+            border: 2px solid #444;
+            margin-right: 20px;
+            /* Отступ от канваса до панели управления */
+        }
+
+        /* Контейнер для панели управления */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            /* Выравнивание элементов панели управления по левому краю */
+            justify-content: flex-start;
+        }
+
+        /* Стили для чекбокса и кнопки */
+        label {
+            font-size: 18px;
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            color: #fff;
+            margin-bottom: 10px;
+            /* Отступ между элементами управления */
+        }
+
+        input[type="checkbox"] {
+            margin-right: 10px;
+            /* Отступ между чекбоксом и текстом */
+        }
+
+        button {
+            background-color: #444;
+            border: none;
+            color: white;
+            font-size: 16px;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-left: 20px;
+            /* Добавлен отступ слева от кнопки */
+        }
+
+        button:hover {
+            background-color: #555;
         }
     </style>
 </head>
 
 <body>
     <canvas id="glCanvas" width="800" height="600"></canvas>
+    <div class="controls">
+        <label>
+            <input type="checkbox" id="pointLightCheckbox" checked> Точечное освещение
+            <button id="plusButton" onclick="addPointLight()">+</button>
+        </label>
+
+        <label>
+            <input type="checkbox" id="wasdForPointLigh" checked> "wasd" управление для точечного
+        </label>
+
+        <label>
+            <input type="checkbox" id="directionalLightCheckbox" checked> Направленное освещение
+        </label>
+
+        <label>
+            <input type="checkbox" id="spotLightCheckbox" checked> Spot освещение
+        </label>
+
+        <label>
+            <input type="checkbox" id="groundCheckbox" checked> ground
+        </label>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+    <script src="loadAndParse.js"></script>
+    <script src="shaders.js"></script>
     <script>
-        const vertexShaderSource = `
-        attribute vec3 aVertexPosition;
-        attribute vec3 aNormal;
-        attribute vec2 aTextureCoord;
-
-        uniform mat4 uModelViewMatrix;
-        uniform mat4 uProjectionMatrix;
-        uniform mat4 uNormalMatrix;
-
-        varying highp vec3 vLighting;
-        varying highp vec2 vTextureCoord;
-
-        void main(void) {
-            gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertexPosition, 1.0);
-            vTextureCoord = aTextureCoord;
-
-            highp vec3 transformedNormal = normalize(vec3(uNormalMatrix * vec4(aNormal, 0.0)));
-            highp vec3 lightDirection = normalize(vec3(0.5, 0.7, 1.0));
-
-            // Directional light
-            highp float directional = max(dot(transformedNormal, lightDirection), 0.0);
-            vLighting = vec3(0.1, 0.1, 0.1) + (vec3(1.0, 1.0, 1.0) * directional);
-        }`;
-
-        const fragmentShaderSource = `
-        varying highp vec3 vLighting;
-        varying highp vec2 vTextureCoord;
-
-        uniform sampler2D uSampler;
-
-        void main(void) {
-            highp vec4 texelColor = texture2D(uSampler, vTextureCoord);
-            gl_FragColor = vec4(texelColor.rgb * vLighting, texelColor.a);
-        }`;
 
         function initShaderProgram(gl, vsSource, fsSource) {
             const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
@@ -81,82 +130,9 @@
             return shader;
         }
 
-        async function loadObjFile(url) {
-            const response = await fetch(url);
-            const text = await response.text();
-            return parseOBJ(text);
-        }
 
-        function parseOBJ(text) {
-            const vertices = [];
-            const normals = [];
-            const textureCoords = [];
-            const vertexIndices = [];
 
-            const lines = text.split('\n');
-            for (const line of lines) {
-                const parts = line.trim().split(/\s+/);
-                if (parts[0] === 'v') {
-                    vertices.push(...parts.slice(1).map(Number));
-                } else if (parts[0] === 'vn') {
-                    normals.push(...parts.slice(1).map(Number));
-                } else if (parts[0] === 'vt') {
-                    textureCoords.push(...parts.slice(1).map(Number));
-                } else if (parts[0] === 'f') {
-                    const face = parts.slice(1).map(part => part.split('/').map(Number));
-                    for (let i = 1; i < face.length - 1; i++) {
-                        vertexIndices.push(face[0], face[i], face[i + 1]);
-                    }
-                }
-            }
-
-            const unpackedVertices = [];
-            const unpackedNormals = [];
-            const unpackedTexCoords = [];
-
-            for (const [v, t, n] of vertexIndices) {
-                unpackedVertices.push(
-                    vertices[(v - 1) * 3],
-                    vertices[(v - 1) * 3 + 1],
-                    vertices[(v - 1) * 3 + 2]
-                );
-                unpackedTexCoords.push(
-                    textureCoords[(t - 1) * 2],
-                    1.0 - textureCoords[(t - 1) * 2 + 1]
-                );
-                unpackedNormals.push(
-                    normals[(n - 1) * 3],
-                    normals[(n - 1) * 3 + 1],
-                    normals[(n - 1) * 3 + 2]
-                );
-            }
-
-            return {
-                vertices: unpackedVertices,
-                normals: unpackedNormals,
-                textureCoords: unpackedTexCoords,
-            };
-        }
-
-        function loadTexture(gl, url) {
-            const texture = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-
-            const pixel = new Uint8Array([255, 255, 255, 255]);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-
-            const image = new Image();
-            image.onload = () => {
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-                gl.generateMipmap(gl.TEXTURE_2D);
-            };
-            image.src = url;
-
-            return texture;
-        }
-
-        function initBuffers(gl, model) {
+        function initModelBuffers(gl, model) {
             const vertexBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.vertices), gl.STATIC_DRAW);
@@ -177,7 +153,47 @@
             };
         }
 
-        async function main() {
+
+
+        const cameraPosition = [0.0, 10.0, -23.0];  // Позиция камеры
+        const target = [0.0, 0.0, 0.0];           // Точка, на которую смотрит камера
+        const up = [0.0, 1.0, 0.0];               // Вектор "вверх"
+        // 2-я - z
+        const models = [[1, 0, 3], [1, 0, 5], [-1, 0, 3], [4, 0, -1], [3, 0, -1]]
+
+        const pointLight = {
+            "lightPositions": [[-5.0, 0.0, -5.0], [5.0, 0.0, 5.0], [-5.0, 0.0, 5.0], [5.0, 0.0, -5.0]],
+            "lightColors": [[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            "lightAmount": 2,
+        }
+
+        const directionalLight = {
+            direction: [0.0, 1.0, 0.0],
+            color: [0.5, 0.3, 0.2],
+        };
+
+
+        let cos_angle = 0.5;
+
+
+        const spotLight = {
+            position: [0.0, 10.0, 0.0],
+            direction: [0.0, -1.0, 0.0],
+            angle: cos_angle, // Угол в радианах
+            color: [10.0, 10.0, 0.0],
+            edgeSmoothness: 0.05, // Резкость границ (меньше — резче)
+        };
+
+
+
+
+
+        function addPointLight() {
+            pointLight.lightAmount = (pointLight.lightAmount + 1) % pointLight.lightPositions.length;
+        }
+
+
+        function main() {
             const canvas = document.getElementById('glCanvas');
             const gl = canvas.getContext('webgl');
             if (!gl) {
@@ -197,53 +213,221 @@
                     projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
                     modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
                     normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
+                    lightPosition: gl.getUniformLocation(shaderProgram, 'uLightPosition'),
                     sampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
                 },
             };
 
-            const model = await loadObjFile('./models/cube.obj');
-            const texture = loadTexture(gl, './textures/max.jpg');
-            const buffers = initBuffers(gl, model);
+            function initPointLights(light, isEnabled) {
+                if (isEnabled) {
+                    for (let index = 0; index < light.lightAmount; index++) {
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightPositions[${index}]`), light.lightPositions[index]);
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightColors[${index}]`), light.lightColors[index]);
+                    }
+                    gl.uniform1i(gl.getUniformLocation(programInfo.program, 'uLightCount'), light.lightAmount);
+                } else {
+                    for (let index = 0; index < light.lightAmount; index++) {
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightPositions[${index}]`), [0.0, 0.0, 0.0]);
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightColors[${index}]`), [0.0, 0.0, 0.0]);
+                    }
+                    gl.uniform1i(gl.getUniformLocation(programInfo.program, 'uLightCount'), 0);
+                }
+            }
+
+            function initDirectionalLight(light, isEnabled) {
+                if (isEnabled) {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightDirection'), light.direction);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightColor'), light.color);
+                }
+                else {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightDirection'), [0.0, 0.0, 0.0]);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightColor'), [0.0, 0.0, 0.0]);
+                }
+
+            }
+
+            function normalize(vec) {
+                const len = Math.sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+                return [vec[0] / len, vec[1] / len, vec[2] / len];
+            }
+
+            function initSpotLight(light, isEnabled) {
+                if (isEnabled) {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightColor'), light.color);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightPosition'), light.position);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightDirection'), normalize(light.direction)); // Нормализуем направление
+                    gl.uniform1f(gl.getUniformLocation(programInfo.program, 'uSpotLightAngle'), Math.cos(spotLight.angle));
+                    console.log(Math.cos(spotLight.angle))
+                }
+                else {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightColor'), [0, 0, 0]);
+                }
+            }
+
+            const model = loadObjFile('./models/tea.obj');
+            const texture = loadTexture(gl, './textures/ff.jpg');
+
+            const buffersModels = initModelBuffers(gl, model);
+
+            const modelFloor = loadObjFile('./models/plane.obj');
+            const buffersFloor = initModelBuffers(gl, modelFloor);
+
+
+            const modelViewMatrix = mat4.create();
+
 
             function render() {
+                gl.clearColor(0.0, 0.0, 0.0, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                gl.enable(gl.DEPTH_TEST);
 
+                // Создаем проекционную матрицу
                 const projectionMatrix = mat4.create();
                 mat4.perspective(projectionMatrix, (45 * Math.PI) / 180, canvas.width / canvas.height, 0.1, 100.0);
 
-                const modelViewMatrix = mat4.create();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [1.0, 0.0, -6.0]);
-
-                const normalMatrix = mat4.create();
-                mat4.invert(normalMatrix, modelViewMatrix);
-                mat4.transpose(normalMatrix, normalMatrix);
+                // Матрица вида для камеры
+                const viewMatrix = mat4.create();
+                mat4.lookAt(viewMatrix, cameraPosition, target, up);  // Настройка камеры
 
                 gl.useProgram(programInfo.program);
 
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertexBuffer);
-                gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normalBuffer);
-                gl.vertexAttribPointer(programInfo.attribLocations.normal, 3, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(programInfo.attribLocations.normal);
+                const pointLightCheckbox = document.getElementById('pointLightCheckbox');
+                if (pointLightCheckbox.checked) {
+                    initPointLights(pointLight, true);
+                } else {
+                    initPointLights(pointLight, false);
+                }
 
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureBuffer);
-                gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+                const directionalLightCheckbox = document.getElementById('directionalLightCheckbox');
 
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                gl.uniform1i(programInfo.uniformLocations.sampler, 0);
+                if (directionalLightCheckbox.checked) {
+                    initDirectionalLight(directionalLight, true);
+                } else {
+                    initDirectionalLight(directionalLight, false);
+                }
 
-                gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
-                gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
-                gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
-                gl.drawArrays(gl.TRIANGLES, 0, buffers.vertexCount);
+                const spotLightCheckbox = document.getElementById('spotLightCheckbox');
 
+                if (spotLightCheckbox.checked) {
+                    // console.log("spot")
+                    initSpotLight(spotLight, true)
+                } else {
+                    initSpotLight(spotLight, false)
+                }
+
+
+
+
+
+                function singleModel(model, buf) {
+                    const modelViewMatrix = mat4.create();
+                    mat4.translate(modelViewMatrix, modelViewMatrix, model); // Трансформация модели
+
+                    // Комбинируем матрицу вида и матрицу модели
+                    const combinedMatrix = mat4.create();
+                    mat4.multiply(combinedMatrix, viewMatrix, modelViewMatrix); // Объединяем видовую и модельную матрицу
+
+
+                    const normalMatrix = mat4.create();
+                    mat4.invert(normalMatrix, viewMatrix);
+                    mat4.transpose(normalMatrix, normalMatrix);
+
+                    // Передаем комбинированную матрицу в шейдер
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, combinedMatrix);
+
+                    // Привязываем буферы и передаем данные в шейдеры
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buf.vertexBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buf.normalBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.normal, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.normal);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buf.textureBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, texture);
+                    gl.uniform1i(programInfo.uniformLocations.sampler, 0);
+
+                    // Передаем матрицы в шейдеры
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, combinedMatrix); // Используем комбинированную матрицу
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+                    gl.drawArrays(gl.TRIANGLES, 0, buf.vertexCount);
+                }
+
+                models.forEach((model) => {
+                    singleModel(model, buffersModels)
+                });
+
+
+                const groundCheckbox = document.getElementById('groundCheckbox');
+
+                if (groundCheckbox.checked) {
+                    singleModel([-1, -1, -1], buffersFloor)
+                }
                 requestAnimationFrame(render);
             }
+
+            const cameraSpeed = 0.5;
+
+            document.addEventListener('keydown', (event) => {
+
+                if (event.key === 'ArrowUp') {
+                    cameraPosition[2] += cameraSpeed;
+                } else if (event.key === 'ArrowDown') {
+                    cameraPosition[2] -= cameraSpeed;
+                } else if (event.key === 'z') {
+                    cameraPosition[1] -= cameraSpeed;
+                } else if (event.key === ' ') {
+                    cameraPosition[1] += cameraSpeed;
+                } else if (event.key === 'ArrowRight') {
+                    target[0] -= cameraSpeed;
+                } else if (event.key === 'ArrowLeft') {
+                    target[0] += cameraSpeed;
+                } else if (event.key === 'q') {
+                    cos_angle += 0.01
+                    cos_angle = cos_angle - Math.floor(cos_angle);
+                    spotLight.angle = cos_angle;
+                    console.log(`spotLight.angle: ${cos_angle}`);
+                } else if (event.key === 'e') {
+                    cos_angle -= 0.01
+                    cos_angle = cos_angle - Math.floor(cos_angle);
+                    spotLight.angle = cos_angle;
+                    console.log(`cos_angle: ${cos_angle}`);
+                }
+                else if (event.key === 'r') {
+                    spotLight.position[2] += 1;
+                    console.log(`spotLight.position: ${spotLight.position[2]}`);
+                }
+                else if (event.key === 't') {
+                    spotLight.position[2] -= 1;
+                    console.log(`spotLight.position: ${spotLight.position[2]}`);
+                }
+
+                const wasdCB = document.getElementById('wasdForPointLigh');
+
+                if (wasdForPointLigh.checked) {
+                    const currentLight = pointLight.lightAmount - 1;
+                    console.log(currentLight)
+                    if (event.key === 'w') {
+                        pointLight.lightPositions[currentLight][0] += cameraSpeed
+                    } else if (event.key === 's') {
+                        pointLight.lightPositions[currentLight][0] -= cameraSpeed
+                    } else if (event.key === 'a') {
+                        pointLight.lightPositions[currentLight][1] += cameraSpeed
+                    } else if (event.key === 'd') {
+                        pointLight.lightPositions[currentLight][1] -= cameraSpeed
+                    }
+                }
+            });
+
 
             render();
         }

@@ -226,57 +226,58 @@
                 },
             };
 
-            const model = await loadObjFile('./models/cube.obj');
-            const texture = loadTexture(gl, './textures/max.jpg');
+            const model = await loadObjFile('./models/tea.obj');
+            const texture = loadTexture(gl, './textures/wood.jpg');
             const buffers = initBuffers(gl, model);
+
+            const modelViewMatrix = mat4.create();
+            const cameraPosition = [0.0, 5.0, -6.0];  // Позиция камеры
+            const target = [0.0, 0.0, 0.0];           // Точка, на которую смотрит камера
+            const up = [0.0, 1.0, 0.0];               // Вектор "вверх"
 
             function render() {
                 gl.clearColor(0.0, 0.0, 0.0, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
                 gl.enable(gl.DEPTH_TEST);
 
+                // Создаем проекционную матрицу
                 const projectionMatrix = mat4.create();
                 mat4.perspective(projectionMatrix, (45 * Math.PI) / 180, canvas.width / canvas.height, 0.1, 100.0);
 
-                const modelViewMatrix = mat4.create();
-                const cameraPosition = [0.0, -5.0, -6.0];  // Позиция камеры
-                const target = [0.0, 0.0, 0.0];           // Точка, на которую смотрит камера
-                const up = [0.0, 1.0, 0.0];               // Вектор "вверх"
+                // Матрица вида для камеры
+                const viewMatrix = mat4.create();
+                mat4.lookAt(viewMatrix, cameraPosition, target, up);  // Настройка камеры
 
-                // Задание положения камеры
-                mat4.lookAt(modelViewMatrix, cameraPosition, target, up);
-
+                // Матрица нормалей (нужна для корректного освещения)
                 const normalMatrix = mat4.create();
-                mat4.invert(normalMatrix, modelViewMatrix);
+                mat4.invert(normalMatrix, viewMatrix);
                 mat4.transpose(normalMatrix, normalMatrix);
 
                 gl.useProgram(programInfo.program);
 
-
                 const lightPositions = [
-                    [-1.0, 0.0, 0.0],  // Позиция первого источника света
-                    [-3.0, 2.0, -1.0], // Позиция второго источника света
+                    [5.0, 0.0, 5.0],  // Позиция первого источника света
+                    [-5.0, 0.0, -5.0], // Позиция второго источника света
                 ];
 
                 const lightColors = [
-                    [1.0, 1.0, 1.0],  // Белый свет для первого источника
-                    [1.0, 1.0, 1.0],  // Красный свет для второго источника
+                    [0.0, 0.0, 1.0],  // Белый свет для первого источника
+                    [1.0, 0.0, 0.0],  // Красный свет для второго источника
                 ];
 
                 // Увеличиваем яркость каждого источника, умножив его компоненты на коэффициент
-                const brightnessFactor = 3;  // Коэффициент для увеличения яркости
-                lightColors[0] = lightColors[0].map(c => c * brightnessFactor);  // Увеличиваем яркость первого источника
-                lightColors[1] = lightColors[1].map(c => c * brightnessFactor);  // Увеличиваем яркость второго источника
+                const brightnessFactor = 1;  // Коэффициент для увеличения яркости
+                lightColors[0] = lightColors[0].map(c => c * brightnessFactor);
+                lightColors[1] = lightColors[1].map(c => c * brightnessFactor);
 
-                // Передаём данные в шейдеры
+                // Передаем данные в шейдеры
                 gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uLightPositions[0]'), lightPositions[0]);
                 gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uLightPositions[1]'), lightPositions[1]);
-
                 gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uLightColors[0]'), lightColors[0]);
                 gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uLightColors[1]'), lightColors[1]);
+                gl.uniform1i(gl.getUniformLocation(programInfo.program, 'uLightCount'), lightPositions.length);  // Указываем, что два источника света
 
-                gl.uniform1i(gl.getUniformLocation(programInfo.program, 'uLightCount'), 2);  // Указываем, что у нас два источника света
-
+                // Привязываем буферы и передаем данные в шейдеры
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertexBuffer);
                 gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
@@ -293,16 +294,58 @@
                 gl.bindTexture(gl.TEXTURE_2D, texture);
                 gl.uniform1i(programInfo.uniformLocations.sampler, 0);
 
+                // Передаем матрицы в шейдеры
                 gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
-                gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
+                gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, viewMatrix); // Используем матрицу вида
                 gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
-                gl.uniform3fv(programInfo.uniformLocations.lightPosition, [2.0, 4.0, -2.0]);
+                // Рисуем первую модель
+                let modelMatrix1 = mat4.create();
+                mat4.translate(modelMatrix1, modelMatrix1, [1.0, 1.0, 0.0]);  // Перемещаем модель
+                mat4.rotateY(modelMatrix1, modelMatrix1, Math.PI / 3); // Поворот модели
+                gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix1);
+                gl.drawArrays(gl.TRIANGLES, 0, buffers.vertexCount);
 
+                // Рисуем вторую модель
+                let modelMatrix2 = mat4.create();
+                mat4.translate(modelMatrix2, modelMatrix2, [-1.0, 0.0, 0.0]);  // Перемещаем модель в другую точку
+                mat4.rotateX(modelMatrix2, modelMatrix2, Math.PI / 4); // Поворот модели
+                gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix2);
                 gl.drawArrays(gl.TRIANGLES, 0, buffers.vertexCount);
 
                 requestAnimationFrame(render);
             }
+            const cameraSpeed = 0.5;
+
+            document.addEventListener('keydown', (event) => {
+                console.log(`cameraPosition: ${cameraPosition}`)
+                if (event.key === 'ArrowUp') {
+                    cameraPosition[1] += cameraSpeed;
+                } else if (event.key === 'ArrowDown') {
+                    cameraPosition[1] -= cameraSpeed;
+                } else if (event.key === ' ') {
+                    cameraPosition[2] -= cameraSpeed;
+                } else if (event.key === 'z') {
+                    cameraPosition[2] += cameraSpeed;
+                } else if (event.key === 'ArrowRight') {
+                    target[0] += cameraSpeed;
+                    // up[0] += cameraSpeed;
+                } else if (event.key === 'ArrowLeft') {
+                    target[0] -= cameraSpeed;
+                    // up[0] -= cameraSpeed;
+
+                } else if (event.key === 'w') {
+                    up[1] -= cameraSpeed;
+                } else if (event.key === 's') {
+                    up[1] += cameraSpeed;
+                } else if (event.key === 'e') {
+                    up[2] -= cameraSpeed;
+                } else if (event.key === 'd') {
+                    up[2] += cameraSpeed;
+                }
+            });
+
+
             render();
         }
 
