@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Освещение и Сцена</title>
+    <style>
+        /* Общие стили для body */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            flex-direction: row;
+            /* Используем row, чтобы элементы располагались в ряд */
+            color: #fff;
+        }
+
+        /* Стили для канваса */
+        canvas {
+            display: block;
+            background: black;
+            border: 2px solid #444;
+            margin-right: 20px;
+            /* Отступ от канваса до панели управления */
+        }
+
+        /* Контейнер для панели управления */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            /* Выравнивание элементов панели управления по левому краю */
+            justify-content: flex-start;
+        }
+
+        /* Стили для чекбокса и кнопки */
+        label {
+            font-size: 18px;
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            color: #fff;
+            margin-bottom: 10px;
+            /* Отступ между элементами управления */
+        }
+
+        input[type="checkbox"] {
+            margin-right: 10px;
+            /* Отступ между чекбоксом и текстом */
+        }
+
+        button {
+            background-color: #444;
+            border: none;
+            color: white;
+            font-size: 16px;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-left: 20px;
+            /* Добавлен отступ слева от кнопки */
+        }
+
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="glCanvas" width="800" height="600"></canvas>
+    <div class="controls">
+        <label>
+            <input type="checkbox" id="pointLightCheckbox" checked> Точечное освещение
+            <button id="plusButton" onclick="addPointLight()">+</button>
+        </label>
+
+        <label>
+            <input type="checkbox" id="wasdForPointLigh" checked> "wasd" управление для точечного
+        </label>
+
+        <label>
+            <input type="checkbox" id="directionalLightCheckbox" checked> Направленное освещение
+        </label>
+
+        <label>
+            <input type="checkbox" id="spotLightCheckbox" checked> Spot освещение
+        </label>
+
+        <label>
+            <input type="checkbox" id="groundCheckbox" checked> ground
+        </label>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+    <script src="loadAndParse.js"></script>
+    <script src="shaders.js"></script>
+    <script>
+
+        function initShaderProgram(gl, vsSource, fsSource) {
+            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+            const shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                console.error('Unable to initialize the shader program:', gl.getProgramInfoLog(shaderProgram));
+                return null;
+            }
+            return shaderProgram;
+        }
+
+        function loadShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('An error occurred compiling the shaders:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+
+
+        function initModelBuffers(gl, model) {
+            const vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.vertices), gl.STATIC_DRAW);
+
+            const normalBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.normals), gl.STATIC_DRAW);
+
+            const textureBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.textureCoords), gl.STATIC_DRAW);
+
+            return {
+                vertexBuffer,
+                normalBuffer,
+                textureBuffer,
+                vertexCount: model.vertices.length / 3,
+            };
+        }
+
+
+        const aircraftModelPos = [5, 5, 5]
+
+        const cameraPosition = [aircraftModelPos[0] + 5, aircraftModelPos[1] + 5, aircraftModelPos[2] + 5];  // Позиция камеры
+        const target = [0.0, 0.0, 0.0];           // Точка, на которую смотрит камера
+        const up = [0.0, 1.0, 0.0];               // Вектор "вверх"
+        // 2-я - z
+        const models = [[5, 5, 5]]
+
+        const pointLight = {
+            "lightPositions": [[-5.0, 0.0, -5.0], [5.0, 0.0, 5.0], [-5.0, 0.0, 5.0], [5.0, 0.0, -5.0]],
+            "lightColors": [[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            "lightAmount": 2,
+        }
+
+        const directionalLight = {
+            direction: [0.0, 1.0, 0.0],
+            color: [0.5, 0.3, 0.2],
+        };
+
+
+        let cos_angle = 0.5;
+
+
+        const spotLight = {
+            position: [0.0, 10.0, 0.0],
+            direction: [0.0, -1.0, 0.0],
+            angle: cos_angle, // Угол в радианах
+            color: [10.0, 10.0, 0.0],
+            edgeSmoothness: 0.05, // Резкость границ (меньше — резче)
+        };
+
+
+
+
+
+        function addPointLight() {
+            pointLight.lightAmount = (pointLight.lightAmount + 1) % pointLight.lightPositions.length;
+        }
+
+
+        function main() {
+            const canvas = document.getElementById('glCanvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) {
+                alert('WebGL not supported');
+                return;
+            }
+
+            const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
+            const programInfo = {
+                program: shaderProgram,
+                attribLocations: {
+                    vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+                    normal: gl.getAttribLocation(shaderProgram, 'aNormal'),
+                    textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+                },
+                uniformLocations: {
+                    projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+                    modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+                    normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
+                    lightPosition: gl.getUniformLocation(shaderProgram, 'uLightPosition'),
+                    sampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+                },
+            };
+
+            function initPointLights(light, isEnabled) {
+                if (isEnabled) {
+                    for (let index = 0; index < light.lightAmount; index++) {
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightPositions[${index}]`), light.lightPositions[index]);
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightColors[${index}]`), light.lightColors[index]);
+                    }
+                    gl.uniform1i(gl.getUniformLocation(programInfo.program, 'uLightCount'), light.lightAmount);
+                } else {
+                    for (let index = 0; index < light.lightAmount; index++) {
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightPositions[${index}]`), [0.0, 0.0, 0.0]);
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightColors[${index}]`), [0.0, 0.0, 0.0]);
+                    }
+                    gl.uniform1i(gl.getUniformLocation(programInfo.program, 'uLightCount'), 0);
+                }
+            }
+
+            function initDirectionalLight(light, isEnabled) {
+                if (isEnabled) {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightDirection'), light.direction);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightColor'), light.color);
+                }
+                else {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightDirection'), [0.0, 0.0, 0.0]);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightColor'), [0.0, 0.0, 0.0]);
+                }
+
+            }
+
+            function normalize(vec) {
+                const len = Math.sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+                return [vec[0] / len, vec[1] / len, vec[2] / len];
+            }
+
+            function initSpotLight(light, isEnabled) {
+                if (isEnabled) {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightColor'), light.color);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightPosition'), light.position);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightDirection'), normalize(light.direction)); // Нормализуем направление
+                    gl.uniform1f(gl.getUniformLocation(programInfo.program, 'uSpotLightAngle'), Math.cos(spotLight.angle));
+                    console.log(Math.cos(spotLight.angle))
+                }
+                else {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightColor'), [0, 0, 0]);
+                }
+            }
+
+            const model = loadObjFile('./models/cube.obj');
+            const texture = loadTexture(gl, './textures/ff.jpg');
+
+            const buffersModels = initModelBuffers(gl, model);
+
+            const modelFloor = loadObjFile('./models/plane.obj');
+            const buffersFloor = initModelBuffers(gl, modelFloor);
+
+            const aircraftModel = loadObjFile('./models/miniship.obj');
+
+            const buffersAircraft = initModelBuffers(gl, aircraftModel);
+
+
+            const modelViewMatrix = mat4.create();
+
+
+            function render() {
+                gl.clearColor(0.0, 0.0, 0.0, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                gl.enable(gl.DEPTH_TEST);
+
+                // Создаем проекционную матрицу
+                const projectionMatrix = mat4.create();
+                mat4.perspective(projectionMatrix, (45 * Math.PI) / 180, canvas.width / canvas.height, 0.1, 100.0);
+
+                // Матрица вида для камеры
+                const viewMatrix = mat4.create();
+                mat4.lookAt(viewMatrix, cameraPosition, target, up);  // Настройка камеры
+
+                gl.useProgram(programInfo.program);
+
+
+                const pointLightCheckbox = document.getElementById('pointLightCheckbox');
+                if (pointLightCheckbox.checked) {
+                    initPointLights(pointLight, true);
+                } else {
+                    initPointLights(pointLight, false);
+                }
+
+                const directionalLightCheckbox = document.getElementById('directionalLightCheckbox');
+
+                if (directionalLightCheckbox.checked) {
+                    initDirectionalLight(directionalLight, true);
+                } else {
+                    initDirectionalLight(directionalLight, false);
+                }
+
+
+                const spotLightCheckbox = document.getElementById('spotLightCheckbox');
+
+                if (spotLightCheckbox.checked) {
+                    // console.log("spot")
+                    initSpotLight(spotLight, true)
+                } else {
+                    initSpotLight(spotLight, false)
+                }
+
+
+
+
+
+                function singleModel(model, buf) {
+                    const modelViewMatrix = mat4.create();
+                    mat4.translate(modelViewMatrix, modelViewMatrix, model); // Трансформация модели
+
+                    // Комбинируем матрицу вида и матрицу модели
+                    const combinedMatrix = mat4.create();
+                    mat4.multiply(combinedMatrix, viewMatrix, modelViewMatrix); // Объединяем видовую и модельную матрицу
+
+
+                    const normalMatrix = mat4.create();
+                    mat4.invert(normalMatrix, viewMatrix);
+                    mat4.transpose(normalMatrix, normalMatrix);
+
+                    // Передаем комбинированную матрицу в шейдер
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, combinedMatrix);
+
+                    // Привязываем буферы и передаем данные в шейдеры
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buf.vertexBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buf.normalBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.normal, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.normal);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buf.textureBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, texture);
+                    gl.uniform1i(programInfo.uniformLocations.sampler, 0);
+
+                    // Передаем матрицы в шейдеры
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, combinedMatrix); // Используем комбинированную матрицу
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+                    gl.drawArrays(gl.TRIANGLES, 0, buf.vertexCount);
+                }
+
+                models.forEach((model) => {
+                    singleModel(model, buffersModels)
+                });
+
+
+                const groundCheckbox = document.getElementById('groundCheckbox');
+
+                if (groundCheckbox.checked) {
+                    singleModel([-1, -1, -1], buffersFloor)
+                }
+
+                singleModel(aircraftModelPos, buffersAircraft)
+
+
+                requestAnimationFrame(render);
+            }
+
+            const cameraSpeed = 0.5;
+
+            document.addEventListener('keydown', (event) => {
+                console.log(target)
+                console.log(cameraPosition)
+                if (event.key === 'ArrowUp') {
+                    cameraPosition[2] += cameraSpeed;
+                } else if (event.key === 'ArrowDown') {
+                    cameraPosition[2] -= cameraSpeed;
+                } else if (event.key === 'z') {
+                    cameraPosition[1] -= cameraSpeed;
+                } else if (event.key === ' ') {
+                    cameraPosition[1] += cameraSpeed;
+                } else if (event.key === 'ArrowRight') {
+                    target[0] -= cameraSpeed;
+                } else if (event.key === 'ArrowLeft') {
+                    target[0] += cameraSpeed;
+                } else if (event.key === 'q') {
+                    cos_angle += 0.01
+                    cos_angle = cos_angle - Math.floor(cos_angle);
+                    spotLight.angle = cos_angle;
+                    console.log(`spotLight.angle: ${cos_angle}`);
+                } else if (event.key === 'e') {
+                    cos_angle -= 0.01
+                    cos_angle = cos_angle - Math.floor(cos_angle);
+                    spotLight.angle = cos_angle;
+                    console.log(`cos_angle: ${cos_angle}`);
+                }
+                else if (event.key === 'r') {
+                    spotLight.position[2] += 1;
+                    console.log(`spotLight.position: ${spotLight.position[2]}`);
+                }
+                else if (event.key === 't') {
+                    spotLight.position[2] -= 1;
+                    console.log(`spotLight.position: ${spotLight.position[2]}`);
+                }
+
+                const wasdCB = document.getElementById('wasdForPointLigh');
+
+                const cc = event.key;
+                if (cc == "w" || cc == "a" || cc == "s" || cc == "d") {
+                    if (event.key === 'w') {
+                        aircraftModelPos[0] += cameraSpeed
+                    } else if (event.key === 's') {
+                        aircraftModelPos[0] -= cameraSpeed
+                    } else if (event.key === 'a') {
+                        aircraftModelPos[2] += cameraSpeed
+                    } else if (event.key === 'd') {
+                        aircraftModelPos[2] -= cameraSpeed
+                    }
+                    // cameraPosition[0] = aircraftModelPos[0] - 5; cameraPosition[1] = aircraftModelPos[1] + 5; cameraPosition[2] = aircraftModelPos[2];
+                    // target[0] = aircraftModelPos[0] - 5; target[1] = aircraftModelPos[1] + 5; target[2] = aircraftModelPos[2] + 5;
+                }
+            });
+
+
+            render();
+        }
+
+        main();
+    </script>
+</body>
+
+</html>

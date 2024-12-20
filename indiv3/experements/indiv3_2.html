@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Освещение и Сцена</title>
+
+</head>
+
+<body>
+    <canvas id="glCanvas" width="800" height="600"></canvas>
+
+    <canvas id="drawingCanvas" width="500" height="500"
+        style="border: 1px solid black; position: absolute; left: 810px; top: 20;"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+    <script src="loadAndParse.js"></script>
+    <script src="shaders.js"></script>
+    <script>
+
+
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawPoint(position, color) {
+            const x = position[0] * canvas.width;
+            const y = (1 - position[1]) * canvas.height;
+            // const y = position[1] * canvas.height;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function initShaderProgram(gl, vsSource, fsSource) {
+            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+            const shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                console.error('Unable to initialize the shader program:', gl.getProgramInfoLog(shaderProgram));
+                return null;
+            }
+            return shaderProgram;
+        }
+
+        function euclideanDistance(point1, point2) {
+            const sumOfSquares = point1.reduce((sum, value, index) => {
+                return sum + Math.pow(value - point2[index], 2);
+            }, 0);
+            return Math.sqrt(sumOfSquares);
+        }
+
+        function findClosestArray(targetArray, arrayOfArrays) {
+            let closestArray = null;
+            let closestDistance = Infinity;
+
+            let i = 0;
+            let min_i = 0;
+            for (const array of arrayOfArrays) {
+                const distance = euclideanDistance(targetArray, array);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestArray = array;
+                    min_i = i;
+                }
+                i += 1;
+            }
+
+            return min_i;
+        }
+
+
+        function loadShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('An error occurred compiling the shaders:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function initModelBuffers(gl, model) {
+            const vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.vertices), gl.STATIC_DRAW);
+
+            const normalBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.normals), gl.STATIC_DRAW);
+
+            const textureBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.textureCoords), gl.STATIC_DRAW);
+
+            return {
+                vertexBuffer,
+                normalBuffer,
+                textureBuffer,
+                vertexCount: model.vertices.length / 3,
+            };
+        }
+
+
+        let aircraftModelPos = [5, 5, 5]
+        const modelFloorPos = [0, -5, 0]
+        const models = [[200, -3, 200], [200, -3, -50], [-300, -3, -200], [200, -3, 100]]
+
+        let rocketPosition = NaN;
+        let targetRocketPosition = NaN;
+
+
+        const cameraPosition = [aircraftModelPos[0] + -40, aircraftModelPos[1] + 10, aircraftModelPos[2] - 5];  // Позиция камеры
+        const target = aircraftModelPos;           // Точка, на которую смотрит камера
+        const up = [0.0, 1.0, 0.0];               // Вектор "вверх"
+
+
+        const pointLight = {
+            "lightPositions": [[-5.0, 0.0, -5.0], [5.0, 0.0, 5.0], [-5.0, 0.0, 5.0], [5.0, 0.0, -5.0]],
+            "lightColors": [[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            "lightAmount": 1,
+        }
+
+        const directionalLight = {
+            direction: [0.0, 1.0, 0.0],
+            color: [0.5, 0.3, 0.2],
+        };
+
+
+        let cos_angle = 0.5;
+
+
+        const spotLight = {
+            position: [0.0, 10.0, 0.0],
+            direction: [0.0, -1.0, 0.0],
+            angle: cos_angle, // Угол в радианах
+            color: [10.0, 10.0, 0.0],
+            edgeSmoothness: 0.05, // Резкость границ (меньше — резче)
+        };
+
+
+
+
+
+        function addPointLight() {
+            pointLight.lightAmount = (pointLight.lightAmount + 1) % pointLight.lightPositions.length;
+        }
+
+
+        function main() {
+            const canvas = document.getElementById('glCanvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) {
+                alert('WebGL not supported');
+                return;
+            }
+
+            const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
+            const programInfo = {
+                program: shaderProgram,
+                attribLocations: {
+                    vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+                    normal: gl.getAttribLocation(shaderProgram, 'aNormal'),
+                    textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+                },
+                uniformLocations: {
+                    projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+                    modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+                    normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
+                    lightPosition: gl.getUniformLocation(shaderProgram, 'uLightPosition'),
+                    sampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+                },
+            };
+
+            function initPointLights(light, isEnabled) {
+                if (isEnabled) {
+                    for (let index = 0; index < light.lightAmount; index++) {
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightPositions[${index}]`), light.lightPositions[index]);
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightColors[${index}]`), light.lightColors[index]);
+                    }
+                    gl.uniform1i(gl.getUniformLocation(programInfo.program, 'uLightCount'), light.lightAmount);
+                } else {
+                    for (let index = 0; index < light.lightAmount; index++) {
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightPositions[${index}]`), [0.0, 0.0, 0.0]);
+                        gl.uniform3fv(gl.getUniformLocation(programInfo.program, `uLightColors[${index}]`), [0.0, 0.0, 0.0]);
+                    }
+                    gl.uniform1i(gl.getUniformLocation(programInfo.program, 'uLightCount'), 0);
+                }
+            }
+
+            function initDirectionalLight(light, isEnabled) {
+                if (isEnabled) {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightDirection'), light.direction);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightColor'), light.color);
+                }
+                else {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightDirection'), [0.0, 0.0, 0.0]);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uDirectionalLightColor'), [0.0, 0.0, 0.0]);
+                }
+
+            }
+
+            function normalize(vec) {
+                const len = Math.sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+                return [vec[0] / len, vec[1] / len, vec[2] / len];
+            }
+
+            function initSpotLight(light, isEnabled) {
+                if (isEnabled) {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightColor'), light.color);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightPosition'), light.position);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightDirection'), normalize(light.direction)); // Нормализуем направление
+                    gl.uniform1f(gl.getUniformLocation(programInfo.program, 'uSpotLightAngle'), Math.cos(spotLight.angle));
+                }
+                else {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightColor'), [0, 0, 0]);
+                }
+            }
+
+            const model = loadObjFile('./models/cube.obj');
+            const texture = loadTexture(gl, './textures/ff.jpg');
+
+            const buffersModels = initModelBuffers(gl, model);
+
+            const modelFloor = loadObjFile('./models/plane2.obj');
+            const buffersFloor = initModelBuffers(gl, modelFloor);
+
+
+            const modelRocket = loadObjFile('./models/tea.obj');
+            const buffersRocket = initModelBuffers(gl, modelRocket);
+
+            //miniship2
+            const aircraftModel = loadObjFile('./models/tea.obj');
+            const buffersAircraft = initModelBuffers(gl, aircraftModel);
+
+            const modelViewMatrix = mat4.create();
+
+            const planSize = [1000, 1000]
+            const rocketSpeed = 1;
+
+            function FIIIIIRE() {
+                rocketPosition = [aircraftModelPos[0], aircraftModelPos[1], aircraftModelPos[2]]
+                let index = findClosestArray(rocketPosition, models);
+
+                targetRocketPosition = models[index];
+            }
+
+
+            function render() {
+                handleInput();
+                // Пример вызова функции
+                clearCanvas();
+                models.forEach((model) => {
+                    drawPoint([(model[2] + planSize[0] / 2) / planSize[0], (model[0] + planSize[1] / 2) / planSize[1]], 'green');
+
+                });
+                drawPoint([(aircraftModelPos[2] + planSize[0] / 2) / planSize[0], (aircraftModelPos[0] + planSize[1] / 2) / planSize[1]], 'blue');
+
+                if (rocketPosition) {
+                    drawPoint([(rocketPosition[2] + planSize[0] / 2) / planSize[0], (rocketPosition[0] + planSize[1] / 2) / planSize[1]], 'red');
+
+                }
+
+                gl.clearColor(0.0, 0.0, 0.0, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                gl.enable(gl.DEPTH_TEST);
+
+                // Создаем проекционную матрицу
+                const projectionMatrix = mat4.create();
+                mat4.perspective(projectionMatrix, (45 * Math.PI) / 180, canvas.width / canvas.height, 0.1, 1000.0);
+
+                // Матрица вида для камеры
+                const viewMatrix = mat4.create();
+                mat4.lookAt(viewMatrix, cameraPosition, target, up);  // Настройка камеры
+
+                gl.useProgram(programInfo.program);
+
+
+
+                // initPointLights(pointLight, true);
+                initDirectionalLight(directionalLight, true);
+                initSpotLight(spotLight, true)
+
+
+
+
+
+                function singleModel(model, buf) {
+                    const modelViewMatrix = mat4.create();
+                    mat4.translate(modelViewMatrix, modelViewMatrix, model); // Трансформация модели
+
+                    // Комбинируем матрицу вида и матрицу модели
+                    const combinedMatrix = mat4.create();
+                    mat4.multiply(combinedMatrix, viewMatrix, modelViewMatrix); // Объединяем видовую и модельную матрицу
+
+
+                    const normalMatrix = mat4.create();
+                    mat4.invert(normalMatrix, viewMatrix);
+                    mat4.transpose(normalMatrix, normalMatrix);
+
+                    // Передаем комбинированную матрицу в шейдер
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, combinedMatrix);
+
+                    // Привязываем буферы и передаем данные в шейдеры
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buf.vertexBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buf.normalBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.normal, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.normal);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buf.textureBuffer);
+                    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, texture);
+                    gl.uniform1i(programInfo.uniformLocations.sampler, 0);
+
+                    // Передаем матрицы в шейдеры
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, combinedMatrix); // Используем комбинированную матрицу
+                    gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+                    gl.drawArrays(gl.TRIANGLES, 0, buf.vertexCount);
+                }
+
+                function handleRocket() {
+                    const eps = 1;
+
+                    if (Math.abs(rocketPosition[0] - targetRocketPosition[0]) > eps ||
+                        Math.abs(rocketPosition[1] - targetRocketPosition[1]) > eps ||
+                        Math.abs(rocketPosition[2] - targetRocketPosition[2]) > eps) {
+
+                        // Вычисляем вектор направления к цели
+                        const directionVector = [
+                            targetRocketPosition[0] - rocketPosition[0],
+                            targetRocketPosition[1] - rocketPosition[1],
+                            targetRocketPosition[2] - rocketPosition[2]
+                        ];
+
+                        // Нормализуем вектор направления
+                        const magnitude = Math.sqrt(directionVector[0] ** 2 + directionVector[1] ** 2 + directionVector[2] ** 2);
+                        if (magnitude > 0) {
+                            const normalizedDirection = directionVector.map(coord => coord / magnitude);
+
+                            // Умножаем нормализованный вектор на скорость
+                            for (let i = 0; i < 3; i++) {
+                                rocketPosition[i] += normalizedDirection[i] * rocketSpeed;
+                            }
+                        }
+                    } else {
+                        if (rocketPosition) {
+                            let index = findClosestArray(rocketPosition, models);
+                            models[index][0] = Math.floor(Math.random() * (400 + 1)) - 200;
+                            models[index][1] = -3;
+                            models[index][2] = Math.floor(Math.random() * (400 + 1)) - 200;
+                        }
+
+                        // Останавливаем ракету
+                        rocketPosition = NaN;
+                        targetRocketPosition = NaN;
+                    }
+                }
+                handleRocket()
+
+                models.forEach((model) => {
+                    singleModel(model, buffersModels)
+                });
+
+                models.forEach((model) => {
+                    singleModel(model, buffersModels)
+                });
+
+                if (rocketPosition) {
+                    singleModel(rocketPosition, buffersRocket)
+                }
+
+                singleModel(modelFloorPos, buffersFloor)
+                singleModel(aircraftModelPos, buffersAircraft)
+                requestAnimationFrame(render);
+            }
+
+
+            const keys = {};
+            document.addEventListener("keydown", (event) => {
+                keys[event.key] = true;
+            });
+            document.addEventListener("keyup", (event) => {
+                keys[event.key] = false;
+            });
+
+            const cameraSpeed = 0.5;
+            const aircraftSpeed = 1;
+
+
+            function handleInput() {
+                const aircraftMovement = [0, 0, 0]
+                if (keys["ArrowUp"]) aircraftMovement[0] += aircraftSpeed;
+                if (keys["ArrowDown"]) aircraftMovement[0] -= aircraftSpeed;
+                if (keys["ArrowLeft"]) aircraftMovement[2] -= aircraftSpeed;
+                if (keys["ArrowRight"]) aircraftMovement[2] += aircraftSpeed;
+                if (keys["z"]) { if (aircraftModelPos[1] - 10 > modelFloorPos[1]) aircraftMovement[1] -= aircraftSpeed };
+                if (keys[" "]) aircraftMovement[1] += aircraftSpeed;
+                if (keys["f"]) FIIIIIRE();
+
+                if (keys["w"]) cameraPosition[2] += aircraftSpeed;
+                if (keys["s"]) cameraPosition[2] -= aircraftSpeed;
+                if (keys["a"]) cameraPosition[0] -= aircraftSpeed;
+                if (keys["d"]) cameraPosition[0] += aircraftSpeed;
+
+
+                aircraftModelPos[0] += aircraftMovement[0]; aircraftModelPos[1] += aircraftMovement[1]; aircraftModelPos[2] += aircraftMovement[2];
+                cameraPosition[0] += aircraftMovement[0]; cameraPosition[1] += aircraftMovement[1]; cameraPosition[2] += aircraftMovement[2];
+
+
+                console.log(aircraftModelPos);
+                console.log(cameraPosition)
+            }
+
+
+            render();
+        }
+
+        main();
+    </script>
+</body>
+
+</html>
