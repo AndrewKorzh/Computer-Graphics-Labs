@@ -5,6 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Освещение и Сцена</title>
+    <style>
+        body {
+            overflow: hidden;
+        }
+    </style>
 
 </head>
 
@@ -13,6 +18,14 @@
 
     <canvas id="drawingCanvas" width="500" height="500"
         style="border: 1px solid black; position: absolute; left: 810px; top: 20;"></canvas>
+
+
+    <div>
+        <button id="startButton">Start</button>
+        <p>Таймер: <span id="timer">0</span> секунд</p>
+        <p>Счет: <span id="score">0</span></p>
+    </div>
+
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
     <script src="loadAndParse.js"></script>
@@ -36,6 +49,31 @@
             ctx.arc(x, y, 4, 0, Math.PI * 2);
             ctx.fill();
         }
+
+        let timerInterval;
+        let elapsedTime = 0;
+        let score = 0;
+        const round_time = 30;
+
+        document.getElementById('startButton').addEventListener('click', function () {
+            if (!timerInterval) { // Если таймер не запущен
+                timerInterval = setInterval(() => {
+                    elapsedTime++;
+                    document.getElementById('timer').textContent = elapsedTime;
+                    document.getElementById('score').textContent = `${score}; round_time: ${round_time}s`
+                }, 1000); // Увеличиваем время каждую секунду
+            }
+        });
+
+        function incrScore() {
+            if (elapsedTime > 0 && elapsedTime < round_time) {
+                score++;
+            }
+
+            document.getElementById('score').textContent = `${score}; round_time: ${round_time}s`;
+        }
+
+
 
         function initShaderProgram(gl, vsSource, fsSource) {
             const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
@@ -114,15 +152,15 @@
         }
 
 
-        let aircraftModelPos = [5, 5, 5]
+        let aircraftModelPos = [5, 45, 5]
         const modelFloorPos = [0, -5, 0]
-        const models = [[200, -3, 200], [200, -3, -50], [-300, -3, -200], [200, -3, 100]]
+        const models = [[200, -3, 200], [200, -3, -50], [-300, -3, -200], [200, -3, 100], [100, -3, 400]]
 
         let rocketPosition = NaN;
         let targetRocketPosition = NaN;
 
 
-        const cameraPosition = [aircraftModelPos[0] + -40, aircraftModelPos[1] + 10, aircraftModelPos[2] - 5];  // Позиция камеры
+        const cameraPosition = [aircraftModelPos[0] - 60, aircraftModelPos[1] + 20, aircraftModelPos[2] - 5];  // Позиция камеры
         const target = aircraftModelPos;           // Точка, на которую смотрит камера
         const up = [0.0, 1.0, 0.0];               // Вектор "вверх"
 
@@ -135,7 +173,7 @@
 
         const directionalLight = {
             direction: [0.0, 1.0, 0.0],
-            color: [0.5, 0.3, 0.2],
+            color: [0.3, 0.3, 0.5],
         };
 
 
@@ -146,7 +184,7 @@
             position: [0.0, 10.0, 0.0],
             direction: [0.0, -1.0, 0.0],
             angle: cos_angle, // Угол в радианах
-            color: [10.0, 10.0, 0.0],
+            color: [10.0, 10.0, 10.0],
             edgeSmoothness: 0.05, // Резкость границ (меньше — резче)
         };
 
@@ -229,8 +267,10 @@
                 }
             }
 
-            const model = loadObjFile('./models/cube.obj');
+            const model = loadObjFile('./models/house2.obj');
             const texture = loadTexture(gl, './textures/ff.jpg');
+
+            const textureCube = loadTexture(gl, './textures/house.jpg');
 
             const buffersModels = initModelBuffers(gl, model);
 
@@ -238,17 +278,33 @@
             const buffersFloor = initModelBuffers(gl, modelFloor);
 
 
-            const modelRocket = loadObjFile('./models/tea.obj');
+            const modelRocket = loadObjFile('./models/ufob.obj');
             const buffersRocket = initModelBuffers(gl, modelRocket);
+            const textureRocket = loadTexture(gl, './textures/max.jpg');
 
-            //miniship2
-            const aircraftModel = loadObjFile('./models/tea.obj');
+
+            const modelCat = loadObjFile('./models/cat.obj');
+            const buffersCat = initModelBuffers(gl, modelCat);
+
+
+            const aircraftModel = loadObjFile('./models/ufob2.obj');
             const buffersAircraft = initModelBuffers(gl, aircraftModel);
+
+
+
+            const modelTree = loadObjFile('./models/bigTree2.obj');
+            const textureTree = loadTexture(gl, './textures/tree.jpg');
+            const buffersTree = initModelBuffers(gl, modelTree);
+
+
+            const modelClouds = loadObjFile('./models/cube.obj');
+            const textureClouds = loadTexture(gl, './textures/ff.jpg');
+            const buffersClouds = initModelBuffers(gl, modelTree);
 
             const modelViewMatrix = mat4.create();
 
             const planSize = [1000, 1000]
-            const rocketSpeed = 1;
+            const rocketSpeed = 0.5;
 
             function FIIIIIRE() {
                 rocketPosition = [aircraftModelPos[0], aircraftModelPos[1], aircraftModelPos[2]]
@@ -297,7 +353,7 @@
 
 
 
-                function singleModel(model, buf) {
+                function singleModel(model, buf, texture) {
                     const modelViewMatrix = mat4.create();
                     mat4.translate(modelViewMatrix, modelViewMatrix, model); // Трансформация модели
 
@@ -365,9 +421,10 @@
                     } else {
                         if (rocketPosition) {
                             let index = findClosestArray(rocketPosition, models);
-                            models[index][0] = Math.floor(Math.random() * (400 + 1)) - 200;
+                            models[index][0] = Math.floor(Math.random() * (800 + 1)) - 500;
                             models[index][1] = -3;
-                            models[index][2] = Math.floor(Math.random() * (400 + 1)) - 200;
+                            models[index][2] = Math.floor(Math.random() * (800 + 1)) - 500;
+                            incrScore()
                         }
 
                         // Останавливаем ракету
@@ -378,19 +435,23 @@
                 handleRocket()
 
                 models.forEach((model) => {
-                    singleModel(model, buffersModels)
+                    singleModel(model, buffersModels, textureCube)
                 });
 
                 models.forEach((model) => {
-                    singleModel(model, buffersModels)
+                    singleModel(model, buffersModels, texture)
                 });
 
                 if (rocketPosition) {
-                    singleModel(rocketPosition, buffersRocket)
+                    singleModel(rocketPosition, buffersRocket, textureRocket)
                 }
 
-                singleModel(modelFloorPos, buffersFloor)
-                singleModel(aircraftModelPos, buffersAircraft)
+                singleModel([10, -3, 50], buffersTree, textureTree)
+
+                singleModel([10, -3, 10], buffersCat, texture)
+
+                singleModel(modelFloorPos, buffersFloor, texture)
+                singleModel(aircraftModelPos, buffersAircraft, texture)
                 requestAnimationFrame(render);
             }
 
@@ -404,7 +465,7 @@
             });
 
             const cameraSpeed = 0.5;
-            const aircraftSpeed = 1;
+            const aircraftSpeed = 1.5;
 
 
             function handleInput() {
@@ -415,12 +476,12 @@
                 if (keys["ArrowRight"]) aircraftMovement[2] += aircraftSpeed;
                 if (keys["z"]) { if (aircraftModelPos[1] - 10 > modelFloorPos[1]) aircraftMovement[1] -= aircraftSpeed };
                 if (keys[" "]) aircraftMovement[1] += aircraftSpeed;
-                if (keys["f"]) FIIIIIRE();
+                if (keys["f"]) { FIIIIIRE() };
 
-                if (keys["w"]) cameraPosition[2] += aircraftSpeed;
-                if (keys["s"]) cameraPosition[2] -= aircraftSpeed;
-                if (keys["a"]) cameraPosition[0] -= aircraftSpeed;
-                if (keys["d"]) cameraPosition[0] += aircraftSpeed;
+                if (keys["d"]) cameraPosition[2] += aircraftSpeed;
+                if (keys["a"]) cameraPosition[2] -= aircraftSpeed;
+                if (keys["s"]) cameraPosition[0] -= aircraftSpeed;
+                if (keys["w"]) cameraPosition[0] += aircraftSpeed;
 
 
                 aircraftModelPos[0] += aircraftMovement[0]; aircraftModelPos[1] += aircraftMovement[1]; aircraftModelPos[2] += aircraftMovement[2];
