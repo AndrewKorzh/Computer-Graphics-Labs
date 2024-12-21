@@ -53,14 +53,15 @@
         const housesPos = [[200, -3, 200], [200, -3, -50], [-300, -3, -200], [200, -3, 100], [100, -3, 400]]
 
         // Земля
-        const groundModel = loadObjFile('./models/plane2.obj');
+        const groundModel = loadObjFile('./models/plane2.obj');//
+        const textureGround = loadTexture(gl, './textures/snow_ground.jpg');
         const groundModelPos = [0, -5, 0]
         const planSize = [1000, 1000] // По хорошему просчитывать бы
 
         // Ракета
         const modelRocket = loadObjFile('./models/ufob.obj');
-        const textureRocket = loadTexture(gl, './textures/max.jpg');
-        const rocketSpeed = 10;
+        const textureRocket = loadTexture(gl, './textures/rocket.jpg');
+        const rocketSpeed = 2;
         let rocketPosition = NaN;
         let targetRocketPosition = NaN;
 
@@ -69,21 +70,28 @@
 
         // Корабль (UFO)
         const aircraftModel = loadObjFile('./models/ufob2.obj');
-        const aircraftSpeed = 1.5;
+        const aircraftSpeed = 4;
         let aircraftModelPos = [5, 45, 5]
 
         // Дерево
         const modelTree = loadObjFile('./models/bigTree2.obj');
         const textureTree = loadTexture(gl, './textures/tree.jpg');
+        const treePos = [10, -3, 50]
+
+
+        // Сани
+        const modelSleigh = loadObjFile('./models/cat.obj');
+        const textureSleigh = loadTexture(gl, './textures/base.jpg');
+        const sleighPos = [treePos[0] + 7, -3, treePos[3] + 7]
 
         // Облака
-        const modelClouds = loadObjFile('./models/cube.obj');
-        const textureClouds = loadTexture(gl, './textures/ff.jpg');
+        const modelClouds = loadObjFile('./models/clouds6.obj');
+        const textureClouds = loadTexture(gl, './textures/base.jpg');
         const cloudsAmount = 10;
-        const letItBe = [300, 100]
+        const letItBe = [400, 100]
         const cloudBorders = { x_min: -letItBe[0], x_max: letItBe[0], y_min: -letItBe[0], y_max: letItBe[0], z_max: letItBe[1], z_min: letItBe[1] - 1, }
         const cloudsPos = generateObjPositions(cloudsAmount, cloudBorders);
-        const cloudScale = 10
+        const cloudScale = 3
         const angles = [0, Math.PI / 1000, 0]; // Углы вращения в радианах
 
         function generateObjPositions(cloudsAmount, borders) {
@@ -109,22 +117,20 @@
 
         // Свет
         const pointLight = {
-            lightPositions: [[-5.0, 0.0, -5.0], [5.0, 0.0, 5.0], [-5.0, 0.0, 5.0], [5.0, 0.0, -5.0]],
+            lightPositions: [[10.0, 3.0, 10.0], [10.0, 100.0, 10.0], [10.0, 0.0, 100.0], [5.0, 0.0, -5.0]],
             lightColors: [[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
-            lightAmount: 1,
+            lightAmount: 3,
         }
-
         const directionalLight = {
             direction: [0.0, 1.0, 0.0],
             color: [0.3, 0.3, 0.5],
         };
-
         const spotLight = {
             position: [0.0, 10.0, 0.0],
             direction: [0.0, -1.0, 0.0],
             angle: 0.5, // Угол в радианах
             color: [10.0, 10.0, 10.0],
-            edgeSmoothness: 0.05, // Резкость границ (меньше — резче)
+            edgeSmoothness: 1, // Резкость границ (меньше — резче)
         };
 
 
@@ -136,62 +142,7 @@
 
 
 
-        function multiplyMatrixVector(matrix, vector) {
-            return [
-                matrix[0][0] * vector[0] + matrix[0][1] * vector[1] + matrix[0][2] * vector[2],
-                matrix[1][0] * vector[0] + matrix[1][1] * vector[1] + matrix[1][2] * vector[2],
-                matrix[2][0] * vector[0] + matrix[2][1] * vector[1] + matrix[2][2] * vector[2],
-            ];
-        }
 
-        // Умножение двух матриц
-        function multiplyMatrices(a, b) {
-            return a.map((row, i) =>
-                b[0].map((_, j) =>
-                    row.reduce((sum, _, k) => sum + a[i][k] * b[k][j], 0)
-                )
-            );
-        }
-
-
-        function rotatePointsInPlace(points, angles) {
-            const { sin, cos } = Math;
-            const [alpha, beta, gamma] = angles; // Углы вращения в радианах вокруг осей X, Y, Z соответственно
-
-            // Матрицы вращения вокруг осей
-            const rotationX = [
-                [1, 0, 0],
-                [0, cos(alpha), -sin(alpha)],
-                [0, sin(alpha), cos(alpha)],
-            ];
-
-            const rotationY = [
-                [cos(beta), 0, sin(beta)],
-                [0, 1, 0],
-                [-sin(beta), 0, cos(beta)],
-            ];
-
-            const rotationZ = [
-                [cos(gamma), -sin(gamma), 0],
-                [sin(gamma), cos(gamma), 0],
-                [0, 0, 1],
-            ];
-
-            // Комбинированная матрица вращения: R = Rz * Ry * Rx
-            const combinedRotation = multiplyMatrices(
-                multiplyMatrices(rotationZ, rotationY),
-                rotationX
-            );
-
-            // Модифицируем точки на месте
-            points.forEach((point, index) => {
-                const [x, y, z] = point;
-                const [nx, ny, nz] = multiplyMatrixVector(combinedRotation, [x, y, z]);
-                points[index][0] = nx;
-                points[index][1] = ny;
-                points[index][2] = nz;
-            });
-        }
 
         document.getElementById('startButton').addEventListener('click', function () {
             if (!timerInterval) { // Если таймер не запущен
@@ -333,6 +284,7 @@
             const buffersAircraft = initModelBuffers(gl, aircraftModel);
             const buffersTree = initModelBuffers(gl, modelTree);
             const buffersClouds = initModelBuffers(gl, modelClouds);
+            const buffersSleigh = initModelBuffers(gl, modelSleigh);
 
 
             const modelViewMatrix = mat4.create();
@@ -410,11 +362,6 @@
                 mat4.lookAt(viewMatrix, cameraPosition, target, up);  // Настройка камеры
                 gl.useProgram(programInfo.program);
 
-
-                // initPointLights(pointLight, true);
-                initDirectionalLight(directionalLight, true);
-                initSpotLight(spotLight, true)
-
                 function singleModelOnScene(model, buf, texture, scale = 1) {
                     const modelViewMatrix = mat4.create();
                     mat4.translate(modelViewMatrix, modelViewMatrix, model); // Трансформация модели
@@ -464,15 +411,20 @@
                 });
 
                 cloudsPos.forEach((model) => {
-                    singleModelOnScene(model, buffersClouds, baseTexture, cloudScale)
+                    singleModelOnScene(model, buffersClouds, textureClouds, cloudScale)
                 });
                 if (rocketPosition) {
-                    singleModelOnScene(rocketPosition, buffersRocket, textureRocket)
+                    singleModelOnScene(rocketPosition, buffersRocket, textureRocket, 2)
                 }
-                singleModelOnScene([10, -3, 50], buffersTree, textureTree);
+                singleModelOnScene(treePos, buffersTree, textureTree);
                 singleModelOnScene([10, -3, 10], buffersCat, baseTexture, 10);
-                singleModelOnScene(groundModelPos, buffersFloor, baseTexture);
+                singleModelOnScene(groundModelPos, buffersFloor, textureGround);
                 singleModelOnScene(aircraftModelPos, buffersAircraft, baseTexture);
+                singleModelOnScene(sleighPos, buffersSleigh, baseTexture, 100);
+
+                initPointLights(pointLight, true);
+                initDirectionalLight(directionalLight, true);
+                initSpotLight(spotLight, true)
 
 
                 requestAnimationFrame(render);

@@ -16,9 +16,10 @@ function multiplyMatrices(a, b) {
 }
 
 
-function rotatePointsInPlace(points, angles) {
+function rotatePointsInPlace(points, angles, rotationCenter = [0, 0, 0]) {
     const { sin, cos } = Math;
     const [alpha, beta, gamma] = angles; // Углы вращения в радианах вокруг осей X, Y, Z соответственно
+    const [cx, cy, cz] = rotationCenter; // Координаты точки вращения
 
     // Матрицы вращения вокруг осей
     const rotationX = [
@@ -47,11 +48,17 @@ function rotatePointsInPlace(points, angles) {
 
     // Модифицируем точки на месте
     points.forEach((point, index) => {
+        // Сдвигаем точку относительно центра вращения
         const [x, y, z] = point;
-        const [nx, ny, nz] = multiplyMatrixVector(combinedRotation, [x, y, z]);
-        points[index][0] = nx;
-        points[index][1] = ny;
-        points[index][2] = nz;
+        const shiftedPoint = [x - cx, y - cy, z - cz];
+
+        // Применяем вращение
+        const [nx, ny, nz] = multiplyMatrixVector(combinedRotation, shiftedPoint);
+
+        // Возвращаем точку на исходное место
+        points[index][0] = nx + cx;
+        points[index][1] = ny + cy;
+        points[index][2] = nz + cz;
     });
 }
 
