@@ -255,12 +255,15 @@
                 if (isEnabled) {
                     gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightColor'), light.color);
                     gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightPosition'), light.position);
-                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightDirection'), normalize(light.direction)); // Нормализуем направление
-                    gl.uniform1f(gl.getUniformLocation(programInfo.program, 'uSpotLightAngle'), Math.cos(spotLight.angle));
-                    console.log(Math.cos(spotLight.angle))
-                }
-                else {
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightDirection'), normalize(light.direction));
+                    gl.uniform1f(gl.getUniformLocation(programInfo.program, 'uSpotLightAngle'), light.angle); // Косинус угла
+                    gl.uniform1f(gl.getUniformLocation(programInfo.program, 'uSpotLightSmoothness'), light.edgeSmoothness);
+                } else {
                     gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightColor'), [0, 0, 0]);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightPosition'), [0, 0, 0]);
+                    gl.uniform3fv(gl.getUniformLocation(programInfo.program, 'uSpotLightDirection'), [0, 0, 0]);
+                    gl.uniform1f(gl.getUniformLocation(programInfo.program, 'uSpotLightAngle'), 0);
+                    gl.uniform1f(gl.getUniformLocation(programInfo.program, 'uSpotLightSmoothness'), 1.0);
                 }
             }
 

@@ -7,18 +7,18 @@ uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform mat4 uNormalMatrix;
 
-uniform vec3 uLightPositions[10];  // До 10 источников света (Point Lights)
-uniform vec3 uLightColors[10];     // Цвета источников света
-uniform int uLightCount;           // Количество активных источников света
+uniform vec3 uLightPositions[10];
+uniform vec3 uLightColors[10];
+uniform int uLightCount;
 
-// Для Directional и Spot Light
-uniform vec3 uDirectionalLightDirection;  // Направление для Directional Light
-uniform vec3 uDirectionalLightColor;     // Цвет Directional Light
+uniform vec3 uDirectionalLightDirection;
+uniform vec3 uDirectionalLightColor;
 
-uniform vec3 uSpotLightPosition;         // Позиция для Spot Light
-uniform vec3 uSpotLightDirection;        // Направление для Spot Light
-uniform float uSpotLightAngle;           // Угол конуса Spot Light
-uniform vec3 uSpotLightColor;            // Цвет Spot Light
+uniform vec3 uSpotLightPosition;
+uniform vec3 uSpotLightDirection;
+uniform float uSpotLightAngle;
+uniform float uSpotLightSmoothness;
+uniform vec3 uSpotLightColor;
 
 varying highp vec3 vLighting;
 varying highp vec2 vTextureCoord;
@@ -30,53 +30,47 @@ void main(void) {
     highp vec3 transformedNormal = normalize(vec3(uNormalMatrix * vec4(aNormal, 0.0)));
     highp vec3 vertexPosition = vec3(uModelViewMatrix * vec4(aVertexPosition, 1.0));
 
-    // Базовая освещенность (окружающий свет)
+    // Ambient Light
     highp vec3 ambientLight = vec3(0.2, 0.2, 0.2);
     highp vec3 lighting = ambientLight;
 
-    // Освещение от Point Lights
+    // Point Lights
     for (int i = 0; i < 10; i++) {
-        if (i >= uLightCount) break; // Используем только активные источники света
+        if (i >= uLightCount) break;
 
-        // Направление света
         highp vec3 lightDirection = normalize(uLightPositions[i] - vertexPosition);
-
-        // Диффузное освещение
         highp float diffuse = max(dot(transformedNormal, lightDirection), 0.0);
 
-        // Toon Shading: делаем освещенность дискретной, используя несколько уровней яркости
-        highp float toonLighting = step(0.5, diffuse);  // Простая дискретизация
-
+        highp float toonLighting = step(0.3, diffuse) + step(0.6, diffuse);
         lighting += uLightColors[i] * toonLighting;
     }
 
-    // Освещение от Directional Light
-    if (length(uDirectionalLightDirection) > 0.0) {
+    // Directional Light
+    if (uDirectionalLightColor != vec3(0.0)) {
         highp vec3 lightDirection = normalize(uDirectionalLightDirection);
         highp float diffuse = max(dot(transformedNormal, lightDirection), 0.0);
 
-        // Toon Shading
-        highp float toonLighting = step(0.5, diffuse);  // Простая дискретизация
+        highp float toonLighting = step(0.3, diffuse) + step(0.6, diffuse);
         lighting += uDirectionalLightColor * toonLighting;
     }
 
-
-    
-    if (length(uSpotLightPosition) > 0.0) {
-        // Направление света от прожектора к вершине
+    // Spot Light
+    if (uSpotLightColor != vec3(0.0)) {
         highp vec3 lightDirection = normalize(uSpotLightPosition - vertexPosition);
+        highp float spotEffect = dot(lightDirection, normalize(-uSpotLightDirection));
 
-        // Диффузное освещение
-        highp float diffuse = max(dot(transformedNormal, lightDirection), 0.0);
+        // Плавное затухание света на границах угла
+        if (spotEffect > uSpotLightAngle) {
+            highp float smoothEdge = (spotEffect - uSpotLightAngle) / uSpotLightSmoothness;
+            highp float attenuation = max(0.0, min(1.0, smoothEdge));
 
-        // Затухание на основе расстояния
-        highp float distance = length(uSpotLightPosition - vertexPosition);
-        highp float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.01 * distance * distance);
+            highp float diffuse = max(dot(transformedNormal, lightDirection), 0.0);
+            highp float distance = length(uSpotLightPosition - vertexPosition);
+            highp float distanceAttenuation = 1.0 / (1.0 + 0.1 * distance + 0.01 * distance * distance);
 
-        // Итоговое освещение от Spot Light
-        lighting += uSpotLightColor * diffuse * attenuation;
+            lighting += uSpotLightColor * diffuse * attenuation * distanceAttenuation;
+        }
     }
-
 
     vLighting = lighting;
 }
