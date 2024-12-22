@@ -1,4 +1,4 @@
-const vertexShaderSource = `
+const vertexShaderSource = ` 
 attribute vec3 aVertexPosition;
 attribute vec3 aNormal;
 attribute vec2 aTextureCoord;
@@ -76,11 +76,6 @@ void main(void) {
     vLighting = lighting;
 }
 `;
-
-
-
-
-
 
 const fragmentShaderSource = `
 varying highp vec3 vLighting;

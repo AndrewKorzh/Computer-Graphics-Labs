@@ -80,9 +80,10 @@
 
 
         // Сани
-        const modelSleigh = loadObjFile('./models/cat.obj');
+        const modelSleigh = loadObjFile('./models/ufob2.obj');
         const textureSleigh = loadTexture(gl, './textures/base.jpg');
-        const sleighPos = [treePos[0] + 7, -3, treePos[3] + 7]
+        const sleighPos = [[treePos[0] + 7, -3, treePos[2] + 7]]
+        const anglesSleigh = [0, Math.PI / 100, 0];
 
         // Облака
         const modelClouds = loadObjFile('./models/clouds6.obj');
@@ -92,7 +93,7 @@
         const cloudBorders = { x_min: -letItBe[0], x_max: letItBe[0], y_min: -letItBe[0], y_max: letItBe[0], z_max: letItBe[1], z_min: letItBe[1] - 1, }
         const cloudsPos = generateObjPositions(cloudsAmount, cloudBorders);
         const cloudScale = 3
-        const angles = [0, Math.PI / 1000, 0]; // Углы вращения в радианах
+        const anglesCloudes = [0, Math.PI / 1000, 0]; // Углы вращения в радианах
 
         function generateObjPositions(cloudsAmount, borders) {
             const clouds = [];
@@ -162,9 +163,16 @@
             document.getElementById('score').textContent = `${score}; round_time: ${round_time}s`;
         }
 
+        // Функция инициализации шейдерной программы
         function initShaderProgram(gl, vsSource, fsSource) {
             const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
             const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+            // Проверка на null в случае ошибок при компиляции
+            if (!vertexShader || !fragmentShader) {
+                console.error('Shader creation failed!');
+                return null;
+            }
 
             const shaderProgram = gl.createProgram();
             gl.attachShader(shaderProgram, vertexShader);
@@ -175,18 +183,25 @@
                 console.error('Unable to initialize the shader program:', gl.getProgramInfoLog(shaderProgram));
                 return null;
             }
+
+            console.log('Shader program created and linked successfully');
             return shaderProgram;
         }
 
+        // Функция загрузки шейдера
         function loadShader(gl, type, source) {
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
+
+            // Проверка компиляции шейдера
             if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
                 console.error('An error occurred compiling the shaders:', gl.getShaderInfoLog(shader));
                 gl.deleteShader(shader);
                 return null;
             }
+
+            console.log('Shader compiled successfully');
             return shader;
         }
 
@@ -336,7 +351,8 @@
                 handleInput();
                 handleRocket();
                 clearCanvas();
-                rotatePointsInPlace(cloudsPos, angles);
+                rotatePointsInPlace(cloudsPos, anglesCloudes, [5, 5, 5]);
+                rotatePointsInPlace(sleighPos, anglesSleigh, treePos);
 
                 housesPos.forEach((model) => {
                     drawPoint([(model[2] + planSize[0] / 2) / planSize[0], (model[0] + planSize[1] / 2) / planSize[1]], 'green');
@@ -417,10 +433,10 @@
                     singleModelOnScene(rocketPosition, buffersRocket, textureRocket, 2)
                 }
                 singleModelOnScene(treePos, buffersTree, textureTree);
-                singleModelOnScene([10, -3, 10], buffersCat, baseTexture, 10);
+                singleModelOnScene([10, -3, 10], buffersCat, baseTexture, 3);
                 singleModelOnScene(groundModelPos, buffersFloor, textureGround);
                 singleModelOnScene(aircraftModelPos, buffersAircraft, baseTexture);
-                singleModelOnScene(sleighPos, buffersSleigh, baseTexture, 100);
+                singleModelOnScene(sleighPos[0], buffersSleigh, baseTexture, 1);
 
                 initPointLights(pointLight, true);
                 initDirectionalLight(directionalLight, true);
