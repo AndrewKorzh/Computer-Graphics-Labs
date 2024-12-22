@@ -2,4 +2,4 @@
 **/photos/
 **/__pycache__/
 *.obj
-indiv2/ind2/
+.vs/
