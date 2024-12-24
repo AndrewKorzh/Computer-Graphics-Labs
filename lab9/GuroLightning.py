@@ -1,9 +1,8 @@
+import tkinter as tk
+from tkinter import Canvas
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from matplotlib.widgets import Button
 
-light_position = np.array([10.0, 10.0, 10.0])  # Положение источника света
+light_position = np.array([10.0, 10.0, 10.0])  # Light source position
 object_color = np.array([0.8, 0.3, 0.3])
 
 def create_sphere(diameter, slices, stacks):
@@ -31,7 +30,6 @@ def create_sphere(diameter, slices, stacks):
     vertices = np.array(vertices)
     return vertices, faces
 
-# Вычисление нормалей к вершинам
 def compute_normals(vertices, faces):
     normals = np.zeros_like(vertices)
     for face in faces:
@@ -40,8 +38,6 @@ def compute_normals(vertices, faces):
         norm = np.linalg.norm(normal)
         if norm > 0:
             normal = normal / norm
-        else:
-            normal = np.zeros(3)  # Нулевой нормаль для вырожденных граней
         for idx in face:
             normals[idx] += normal
 
@@ -51,73 +47,34 @@ def compute_normals(vertices, faces):
             normals[i] = normals[i] / norm
     return normals
 
-# Освещение по модели Ламберта
 def lambert_shading(vertex, normal):
     light_dir = light_position - vertex
     light_dir = light_dir / np.linalg.norm(light_dir)
     intensity = max(np.dot(normal, light_dir), 0.0)
     color = object_color * intensity
-    return np.clip(color, 0, 1)  # Ограничиваем цвет в диапазоне [0, 1]
+    return np.clip(color, 0, 1)
 
-# Барицентрическая интерполяция
-def barycentric_interpolation(vertices, face, vertex_colors, resolution=20):
-    v0, v1, v2 = vertices[face]
-    color0, color1, color2 = vertex_colors
-    points = []
-    colors = []
+def project(vertex, width, height):
+    scale = 200
+    x = int(width / 2 + vertex[0] * scale)
+    y = int(height / 2 - vertex[1] * scale)
+    return x, y
 
-    for i in range(resolution + 1):
-        for j in range(resolution + 1 - i):
-            u = i / resolution
-            v = j / resolution
-            w = 1 - u - v
-            # Убедимся, что веса корректные
-            w = max(min(w, 1), 0)
-            u = max(min(u, 1), 0)
-            v = max(min(v, 1), 0)
-
-            point = u * v0 + v * v1 + w * v2
-            color = u * color0 + v * color1 + w * color2
-            points.append(point)
-            colors.append(np.clip(color, 0, 1))  # Ограничиваем значения цветов
-
-    return np.array(points), np.array(colors)
-
-# Функция для применения аффинных преобразований
-def apply_affine_transformation(vertices, transformation_matrix):
-    return np.dot(vertices, transformation_matrix.T)
-
-# Рендеринг с интерполяцией цветов
-def render(vertices, faces, normals, ax):
-    ax.cla()  # Очистить предыдущий график
-    ax.set_box_aspect([1, 1, 1])
-
+def render(canvas, vertices, faces, normals, width, height):
+    canvas.delete("all")
     for face in faces:
-        # Рассчитываем цвета вершин
         vertex_colors = [lambert_shading(vertices[idx], normals[idx]) for idx in face]
-        # Интерполяция внутри треугольника
-        interpolated_points, interpolated_colors = barycentric_interpolation(vertices, face, vertex_colors)
-
-        # Добавляем точки как полигоны для отображения
-        ax.scatter(
-            interpolated_points[:, 0],
-            interpolated_points[:, 1],
-            interpolated_points[:, 2],
-            c=interpolated_colors,
-            s=1,
-            edgecolor='none'
+        points = [project(vertices[idx], width, height) for idx in face]
+        color = "#{:02x}{:02x}{:02x}".format(
+            int(vertex_colors[0][0] * 255),
+            int(vertex_colors[0][1] * 255),
+            int(vertex_colors[0][2] * 255),
         )
+        canvas.create_polygon(points, fill=color, outline=color)
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    plt.draw()
-
-# Аффинные преобразования
 def apply_affine_transformation(vertices, transformation_matrix):
     return np.dot(vertices, transformation_matrix.T)
 
-# Поворот
 def rotate(vertices, angle, axis):
     c = np.cos(angle)
     s = np.sin(angle)
@@ -135,48 +92,12 @@ def rotate(vertices, angle, axis):
                                     [0, 0, 1]])
     return apply_affine_transformation(vertices, rotation_matrix)
 
-# Масштабирование
 def scale(vertices, factor):
     scaling_matrix = np.diag([factor, factor, factor])
     return apply_affine_transformation(vertices, scaling_matrix)
 
-# Сдвиг
-def translate(vertices, dx, dy, dz):
-    translation_matrix = np.eye(4)
-    translation_matrix[:3, 3] = [dx, dy, dz]
-    homogeneous_vertices = np.hstack([vertices, np.ones((vertices.shape[0], 1))])
-    transformed = np.dot(homogeneous_vertices, translation_matrix.T)
-    return transformed[:, :3]
-
-# Обработка событий 
-def on_rotate_x(event, vertices, faces, normals, ax):
-    rotated_vertices = rotate(vertices, np.pi / 20, 'x')
-    render(rotated_vertices, faces, normals, ax)
-
-def on_rotate_y(event, vertices, faces, normals, ax):
-    rotated_vertices = rotate(vertices, np.pi / 20, 'y')
-    render(rotated_vertices, faces, normals, ax)
-
-def on_scale_up(event, vertices, faces, normals, ax):
-    transformed_vertices = scale(vertices, 1.1)
-    render(transformed_vertices, faces, normals, ax)
-
-def on_scale_down(event, vertices, faces, normals, ax):
-    transformed_vertices = scale(vertices, 0.9)
-    render(transformed_vertices, faces, normals, ax)
-
-def on_translate_x(event, vertices, faces, normals, ax, dx=0.1):
-    transformed_vertices = translate(vertices, dx, 0, 0)
-    render(transformed_vertices, faces, normals, ax)
-
-def on_translate_y(event, vertices, faces, normals, ax, dy=0.1):
-    transformed_vertices = translate(vertices, 0, dy, 0)
-    render(transformed_vertices, faces, normals, ax)
-
-def on_translate_z(event, vertices, faces, normals, ax, dz=0.1):
-    transformed_vertices = translate(vertices, 0, 0, dz)
-    render(transformed_vertices, faces, normals, ax)
-
+def update(canvas, vertices, faces, normals, width, height):
+    render(canvas, vertices, faces, normals, width, height)
 
 def main():
     diameter = 2.0
@@ -184,39 +105,70 @@ def main():
     vertices, faces = create_sphere(diameter, slices, stacks)
     normals = compute_normals(vertices, faces)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    render(vertices, faces, normals, ax)
+    root = tk.Tk()
+    root.title("3D Sphere Viewer")
 
-    ax_rotate_x = plt.axes([0.33, 0.01, 0.1, 0.075])
-    btn_rotate_x = Button(ax_rotate_x, 'Rotate X')
-    btn_rotate_x.on_clicked(lambda event: on_rotate_x(event, vertices, faces, normals, ax))
+    width, height = 800, 600
+    canvas = Canvas(root, width=width, height=height, bg="white")
+    canvas.pack()
 
-    ax_rotate_y = plt.axes([0.44, 0.01, 0.1, 0.075])
-    btn_rotate_y = Button(ax_rotate_y, 'Rotate Y')
-    btn_rotate_y.on_clicked(lambda event: on_rotate_y(event, vertices, faces, normals, ax))
+    class SphereRenderer:
+        def __init__(self):
+            self.vertices = vertices
+            self.faces = faces
+            self.normals = normals
+            self.angle_x = 0.0
+            self.angle_y = 0.0
+            self.last_mouse_pos = None
 
-    ax_scale_up = plt.axes([0.55, 0.01, 0.1, 0.075])
-    btn_scale_up = Button(ax_scale_up, 'Scale Up')
-    btn_scale_up.on_clicked(lambda event: on_scale_up(event, vertices, faces, normals, ax))
+        def draw_sphere(self):
+            # Обновляем матрицу вращения
+            rotation_x = rotate(np.eye(3), self.angle_x, 'x')
+            rotation_y = rotate(np.eye(3), self.angle_y, 'y')
+            rotation_matrix = np.dot(rotation_y, rotation_x)
 
-    ax_scale_down = plt.axes([0.66, 0.01, 0.1, 0.075])
-    btn_scale_down = Button(ax_scale_down, 'Scale Down')
-    btn_scale_down.on_clicked(lambda event: on_scale_down(event, vertices, faces, normals, ax))
+            # Применяем вращение к вершинам
+            rotated_vertices = np.dot(self.vertices, rotation_matrix.T)
+            update(canvas, rotated_vertices, self.faces, self.normals, width, height)
 
-    ax_translate_x = plt.axes([0.77, 0.017, 0.1, 0.075])
-    btn_translate_x = Button(ax_translate_x, 'Move X+')
-    btn_translate_x.on_clicked(lambda event: on_translate_x(event, vertices, faces, normals, ax, 0.1))
+        def on_mouse_drag(self, event):
+            if self.last_mouse_pos is not None:
+                dx = event.x - self.last_mouse_pos[0]
+                dy = event.y - self.last_mouse_pos[1]
+                self.angle_y += dx * 0.01
+                self.angle_x += dy * 0.01
+                self.draw_sphere()
+            self.last_mouse_pos = (event.x, event.y)
 
-    ax_translate_y = plt.axes([0.88, 0.017, 0.1, 0.075])
-    btn_translate_y = Button(ax_translate_y, 'Move Y+')
-    btn_translate_y.on_clicked(lambda event: on_translate_y(event, vertices, faces, normals, ax, 0.1))
+    renderer = SphereRenderer()
 
-    ax_translate_z = plt.axes([0.77, 0.09, 0.1, 0.075])
-    btn_translate_z = Button(ax_translate_z, 'Move Z+')
-    btn_translate_z.on_clicked(lambda event: on_translate_z(event, vertices, faces, normals, ax, 0.1))
+    # Привязываем события мыши
+    canvas.bind("<ButtonPress-1>", lambda event: setattr(renderer, 'last_mouse_pos', (event.x, event.y)))
+    canvas.bind("<ButtonRelease-1>", lambda event: setattr(renderer, 'last_mouse_pos', None))
+    canvas.bind("<B1-Motion>", renderer.on_mouse_drag)
 
-    plt.show()
+    # Кнопки для управления масштабированием
+    def scale_up():
+        renderer.vertices = scale(renderer.vertices, 1.1)
+        renderer.draw_sphere()
 
-if __name__ == '__main__':
+    def scale_down():
+        renderer.vertices = scale(renderer.vertices, 0.9)
+        renderer.draw_sphere()
+
+    button_frame = tk.Frame(root)
+    button_frame.pack()
+
+    btn_scale_up = tk.Button(button_frame, text="Scale Up", command=scale_up)
+    btn_scale_up.pack(side=tk.LEFT)
+
+    btn_scale_down = tk.Button(button_frame, text="Scale Down", command=scale_down)
+    btn_scale_down.pack(side=tk.LEFT)
+
+    # Начальное обновление
+    renderer.draw_sphere()
+    root.mainloop()
+
+
+if __name__ == "__main__":
     main()
