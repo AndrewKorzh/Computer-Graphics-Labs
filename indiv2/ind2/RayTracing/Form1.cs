@@ -121,12 +121,17 @@ namespace RayTracing
             }
             room.down_wall_material = new Material(refl, refr, amb, dif, env);
 
-            Light l1 = new Light(new Point3D(0f, 1f, 4.9f), new Point3D(1f, 1f, 1f));
-            lights.Add(l1);
+
             if (twoLightsCB.Checked)
             {
-                Light l2 = new Light(new Point3D(0f, 4f, -4.9f), new Point3D(1f, 1f, 1f));
+                Light l1 = new Light(new Point3D(0f, 1f, 4.9f), new Point3D(0.5f, 1f, 1f));
+                lights.Add(l1);
+                Light l2 = new Light(new Point3D(0f, 2f, 4.9f), new Point3D(0.5f, 1f, 1f));
                 lights.Add(l2);
+            }
+            else {
+                Light l1 = new Light(new Point3D(0f, 1f, 4.9f), new Point3D(1f, 1f, 0.1f));
+                lights.Add(l1);
             }
 
             Sphere s1 = new Sphere(new Point3D(2.8f, -2.5f, 2.5f), 2f);
