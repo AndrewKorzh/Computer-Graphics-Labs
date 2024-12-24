@@ -31,7 +31,6 @@
     <script src="loadAndParse.js"></script>
     <script src="worldMap.js"></script>
     <script src="shaders.js"></script>
-    <script src="settings.js"></script>
     <script src="utils.js"></script>
 
     <script>
@@ -169,11 +168,11 @@
         const pointLight = {
             lightPositions: [[10.0, 3.0, 10.0], [10.0, 100.0, 10.0], [10.0, 0.0, 100.0], [5.0, 0.0, -5.0]],
             lightColors: [[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
-            lightAmount: 3,
+            lightAmount: 2,
         }
         const directionalLight = {
             direction: [0.0, 1.0, 0.0],
-            color: [0.3, 0.3, 0.5],
+            color: [0.5, 0.5, 0.7],
         };
         const spotLight = {
             position: [0.0, 10.0, 0.0],
@@ -218,7 +217,7 @@
             const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
 
             // Проверка на null в случае ошибок при компиляции
-            if (!vertexShader || !fragmentShader) {
+            if (!vertexShader || !fragmentShader) {//
                 console.error('Shader creation failed!');
                 return null;
             }
@@ -523,9 +522,9 @@
                 singleModelOnScene(aircraftModelPos, buffersAircraft, baseTexture);
                 singleModelOnScene(sleighPos[0], buffersSleigh, baseTexture, 1);
 
-                initPointLights(pointLight, true);
+                // initPointLights(pointLight, true);
                 initDirectionalLight(directionalLight, true);
-                initSpotLight(spotLight, true)
+                // initSpotLight(spotLight, true)
 
 
                 requestAnimationFrame(render);

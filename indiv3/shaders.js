@@ -7,11 +7,10 @@ uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform mat4 uNormalMatrix;
 
-uniform vec3 uLightPositions[10];  // До 10 источников света (Point Lights)
+uniform vec3 uLightPositions[10];  // До 10 источников света
 uniform vec3 uLightColors[10];     // Цвета источников света
 uniform int uLightCount;           // Количество активных источников света
 
-// Для Directional и Spot Light
 uniform vec3 uDirectionalLightDirection;  // Направление для Directional Light
 uniform vec3 uDirectionalLightColor;      // Цвет Directional Light
 
@@ -35,7 +34,8 @@ void main(void) {
     highp vec3 lighting = ambientLight;
 
     // Освещение от Point Lights
-    for (int i = 0; i < uLightCount; i++) {
+    for (int i = 0; i < 10; i++) {
+        if (i >= uLightCount) break; // Учитываем только активные источники света
         highp vec3 lightDirection = normalize(uLightPositions[i] - vertexPosition);
         highp float distance = length(uLightPositions[i] - vertexPosition);
         highp float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.01 * distance * distance);
@@ -49,7 +49,7 @@ void main(void) {
     }
 
     // Освещение от Directional Light
-    if (length(uDirectionalLightDirection) > 0.0) {
+    if (uDirectionalLightColor != vec3(0.0)) {
         highp vec3 lightDirection = normalize(uDirectionalLightDirection);
         highp float diffuse = max(dot(transformedNormal, lightDirection), 0.0);
 
@@ -58,7 +58,7 @@ void main(void) {
     }
 
     // Освещение от Spot Light
-    if (length(uSpotLightPosition) > 0.0) {
+    if (uSpotLightColor != vec3(0.0)) {
         highp vec3 lightDirection = normalize(uSpotLightPosition - vertexPosition);
 
         // Проверяем, находится ли вершина в пределах угла прожектора
